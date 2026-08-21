@@ -1,0 +1,28 @@
+<?php
+namespace Kitgenix\MultiStore\Sync;
+
+use Kitgenix\MultiStore\Repository\MappingRepository;
+use Kitgenix\MultiStore\Support\Context;
+use Kitgenix\MultiStore\Support\Logger;
+use Kitgenix\MultiStore\Support\Settings;
+use Kitgenix\MultiStore\Support\Uuid;
+
+final class CouponSync {
+    public function __construct(private MappingRepository$mappings,private Dispatcher$dispatcher,private Settings$settings,private Logger$logger){}
+    public function hooks():void{add_action('woocommerce_new_coupon',array($this,'changed'),20,2);add_action('woocommerce_update_coupon',array($this,'changed'),20,2);add_action('trashed_post',array($this,'trashed'),20,1);}
+    public function changed(int$id,?\WC_Coupon$coupon=null):void{if(Context::is_remote()||'yes'!==$this->settings->get('sync_coupons','yes')||!$this->settings->is_control())return;$coupon=$coupon?:new \WC_Coupon($id);$network=$this->mappings->network_id('coupon',$id,$coupon->get_code());$this->dispatcher->dispatch('coupon_upsert','coupon',$network,$this->payload($coupon,$network));}
+
+    public function trashed(int $id):void{
+        if(Context::is_remote()||'yes'!==$this->settings->get('sync_coupons','yes')||!$this->settings->is_control()||'shop_coupon'!==get_post_type($id))return;
+        $coupon=new \WC_Coupon($id);$network=$this->mappings->network_id('coupon',$id,$coupon->get_code());
+        $this->dispatcher->dispatch('coupon_trash','coupon',$network,array('network_id'=>$network,'code'=>$coupon->get_code()));
+    }
+    public function trash(string $network):array|\WP_Error{return Context::remote(function()use($network){$id=$this->mappings->local_id($network,'coupon');if(!$id)return new \WP_Error('kitgenix_multistore_sync_for_woocommerce_coupon_mapping','Coupon mapping is missing.',array('status'=>404));wp_trash_post($id);return array('local_id'=>$id);});}
+    public function receive(array$p,int$revision):array|\WP_Error{return Context::remote(function()use($p,$revision){$network=sanitize_text_field((string)($p['network_id']??''));$code=wc_format_coupon_code((string)($p['code']??''));if(!$network||!$code)return new \WP_Error('kitgenix_multistore_sync_for_woocommerce_coupon_payload','Invalid coupon payload.');$id=$this->mappings->local_id($network,'coupon');if(!$id)$id=wc_get_coupon_id_by_code($code);$c=$id?new \WC_Coupon($id):new \WC_Coupon();$c->set_code($code);$c->set_discount_type((string)($p['discount_type']??'fixed_cart'));$c->set_amount(wc_format_decimal($p['amount']??0));$c->set_date_expires(!empty($p['date_expires'])?$p['date_expires']:null);$c->set_individual_use(!empty($p['individual_use']));$c->set_usage_limit((int)($p['usage_limit']??0));$c->set_usage_limit_per_user((int)($p['usage_limit_per_user']??0));$c->set_limit_usage_to_x_items((int)($p['limit_usage_to_x_items']??0));$c->set_free_shipping(!empty($p['free_shipping']));$c->set_exclude_sale_items(!empty($p['exclude_sale_items']));$c->set_minimum_amount(wc_format_decimal($p['minimum_amount']??''));$c->set_maximum_amount(wc_format_decimal($p['maximum_amount']??''));$c->set_email_restrictions(array_map('sanitize_email',(array)($p['email_restrictions']??array())));$c->set_product_ids($this->ids_by_sku((array)($p['product_skus']??array())));$c->set_excluded_product_ids($this->ids_by_sku((array)($p['excluded_product_skus']??array())));$c->set_product_categories($this->category_ids((array)($p['product_categories']??array())));$c->set_excluded_product_categories($this->category_ids((array)($p['excluded_product_categories']??array())));$c->set_description(wp_kses_post((string)($p['description']??'')));$c->save();update_post_meta($c->get_id(),'_kitgenix_multistore_sync_for_woocommerce_network_id',$network);$this->mappings->upsert($network,'coupon',Uuid::site(),$c->get_id(),$code,$revision);return array('local_id'=>$c->get_id(),'object_key'=>$code);});}
+    private function payload(\WC_Coupon$c,string$n):array{return apply_filters('kitgenix_multistore/coupon/payload',array('network_id'=>$n,'code'=>$c->get_code(),'discount_type'=>$c->get_discount_type(),'amount'=>$c->get_amount(),'date_expires'=>$c->get_date_expires()?$c->get_date_expires()->date('c'):null,'individual_use'=>$c->get_individual_use(),'usage_limit'=>$c->get_usage_limit(),'usage_limit_per_user'=>$c->get_usage_limit_per_user(),'limit_usage_to_x_items'=>$c->get_limit_usage_to_x_items(),'free_shipping'=>$c->get_free_shipping(),'exclude_sale_items'=>$c->get_exclude_sale_items(),'minimum_amount'=>$c->get_minimum_amount(),'maximum_amount'=>$c->get_maximum_amount(),'email_restrictions'=>$c->get_email_restrictions(),'product_skus'=>$this->skus($c->get_product_ids()),'excluded_product_skus'=>$this->skus($c->get_excluded_product_ids()),'product_categories'=>$this->category_slugs($c->get_product_categories()),'excluded_product_categories'=>$this->category_slugs($c->get_excluded_product_categories()),'description'=>$c->get_description()),$c);}
+
+    private function skus(array$ids):array{$out=array();foreach($ids as$id){$product=wc_get_product((int)$id);if($product&&$product->get_sku())$out[]=$product->get_sku();}return$out;}
+    private function ids_by_sku(array$skus):array{$out=array();foreach($skus as$sku){$id=(int)wc_get_product_id_by_sku(wc_clean((string)$sku));if($id)$out[]=$id;}return$out;}
+    private function category_slugs(array$ids):array{$out=array();foreach($ids as$id){$term=get_term((int)$id,'product_cat');if($term&&!is_wp_error($term))$out[]=$term->slug;}return$out;}
+    private function category_ids(array$slugs):array{$out=array();foreach($slugs as$slug){$slug=sanitize_title((string)$slug);if(!$slug)continue;$term=get_term_by('slug',$slug,'product_cat');if($term&&!is_wp_error($term))$out[]=(int)$term->term_id;}return$out;}
+}

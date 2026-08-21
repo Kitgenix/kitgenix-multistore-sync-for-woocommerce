@@ -1,0 +1,711 @@
+<?php
+namespace Kitgenix\MultiStore\Admin;
+
+use Kitgenix\MultiStore\Migration\WooMultistoreImporter;
+use Kitgenix\MultiStore\Plugin;
+use Kitgenix\MultiStore\Support\Settings;
+use Kitgenix\MultiStore\Support\Access;
+use Kitgenix\MultiStore\Support\ErrorCatalog;
+use Kitgenix\MultiStore\Multisite\NativeNetwork;
+use Kitgenix\MultiStore\Support\Uuid;
+
+final class Admin {
+    public function __construct(private Plugin$plugin){}
+    public function hooks():void{
+        add_action('admin_menu',array($this,'menu'),20);add_action('admin_enqueue_scripts',array($this,'assets'));add_filter('plugin_action_links_'.KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_BASENAME,array($this,'links'));
+        foreach(array('save_settings','generate_pair','connect_store','delete_store','sync_product','sync_all_products','reconcile','create_automation','delete_automation','remote_order_status','migrate_woomultistore','retry_delivery','create_store_group','delete_store_group','save_store_pricing_rules','save_store_policies','toggle_store','export_orders','bulk_order_status','resolve_conflict','remote_order_note','remote_order_refund','index_orders')as$a){add_action('admin_post_kitgenix_multistore_sync_for_woocommerce_'.$a,array($this,$a));}
+    }
+    public function menu():void{add_submenu_page('kitgenix','Kitgenix MultiStore','MultiStore',Access::CAP,'kitgenix-multistore',array($this,'render'));}
+    public function assets(string$hook):void{
+        wp_register_style('kitgenix-hub',KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/css/kitgenix-hub.css',array(),KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION);
+        wp_register_style('kitgenix-admin-ui',KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/css/kitgenix-admin-ui.css',array('kitgenix-hub'),KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION);
+        wp_register_style('kitgenix-multistore-sync-for-woocommerce-admin',KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/css/admin.css',array('kitgenix-admin-ui'),KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION);
+        $is_kitgenix_page=str_contains($hook,'kitgenix');
+        $post_type=(string)($_GET['post_type']??(!empty($_GET['post'])?get_post_type((int)$_GET['post']):''));
+        $is_product_screen=in_array($hook,array('edit.php','post.php','post-new.php'),true)&&'product'===$post_type;
+        if(!$is_kitgenix_page&&!$is_product_screen)return;
+        wp_register_script('kitgenix-admin-tabs',KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/js/kitgenix-admin-tabs.js',array(),KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION,true);
+        wp_register_script('kitgenix-admin-components',KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/js/kitgenix-admin-components.js',array(),KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION,true);
+        wp_enqueue_style('kitgenix-hub');wp_enqueue_style('kitgenix-admin-ui');wp_enqueue_style('kitgenix-multistore-sync-for-woocommerce-admin');
+        if($is_kitgenix_page){
+            wp_enqueue_script('kitgenix-admin-tabs');
+            wp_enqueue_script('kitgenix-admin-components');
+            wp_enqueue_script('kitgenix-multistore-sync-for-woocommerce-admin',KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/js/admin.js',array('kitgenix-admin-tabs','kitgenix-admin-components'),KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION,true);
+        }
+    }
+    public function links(array$links):array{array_unshift($links,'<a href="'.esc_url(admin_url('admin.php?page=kitgenix-multistore&view=settings')).'">'.esc_html__('Settings','kitgenix-multistore').'</a>');return$links;}
+    public function render():void{if(!Access::can_manage())wp_die(esc_html__('You do not have permission to access this page.','kitgenix-multistore'));$view=sanitize_key($_GET['view']??'dashboard');$allowed=array('dashboard','stores','products','inventory','orders','customers','coupons','sync','automations','analytics','integrations','doctor','migration','logs','settings','support');if(!in_array($view,$allowed,true))$view='dashboard';
+        $assets_url=KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/';$social_base=$assets_url.'images/social-media/';
+        echo '<div class="wrap kitgenix-admin-app kitgenix-multistore-sync-for-woocommerce" id="kitgenix-multistore-sync-for-woocommerce-admin-app">';
+        echo '<div class="kitgenix-topbar">';
+        echo '<div class="kitgenix-topbar-left">';
+        echo '<a class="kitgenix-topbar-brand" href="'.esc_url(admin_url('admin.php?page=kitgenix')).'" title="Kitgenix"><img class="kitgenix-topbar-logo" src="'.esc_url($assets_url.'images/logos/kitgenix-primary-favicon.svg').'" alt="Kitgenix" width="28" height="28" /></a>';
+        echo '<span class="kitgenix-topbar-divider" aria-hidden="true"></span>';
+        echo '<div class="kitgenix-topbar-plugin-info"><span class="kitgenix-topbar-title">'.esc_html__('MultiStore for WooCommerce','kitgenix-multistore').'</span><span class="kitgenix-topbar-version">v'.esc_html(KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION).'</span></div>';
+        echo '</div>';
+        echo '<div class="kitgenix-topbar-center">';
+        echo '<ul class="kitgenix-topbar-menu" role="tablist" aria-label="'.esc_attr__('MultiStore navigation','kitgenix-multistore').'">';
+        $this->tabs($view);
+        echo '</ul>';
+        echo '</div>';
+        echo '<div class="kitgenix-topbar-right" aria-label="Topbar actions">';
+        echo '<div class="kitgenix-topbar-search">';
+        echo '<button type="button" class="kitgenix-topbar-icon-btn kitgenix-search-toggle" aria-label="'.esc_attr__('Search settings','kitgenix-multistore').'" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.5232 13.4627L17.7355 16.6742L16.6742 17.7355L13.4627 14.5232C12.2678 15.4812 10.7815 16.0022 9.25 16C5.524 16 2.5 12.976 2.5 9.25C2.5 5.524 5.524 2.5 9.25 2.5C12.976 2.5 16 5.524 16 9.25C16.0022 10.7815 15.4812 12.2678 14.5232 13.4627ZM13.0187 12.9062C13.9706 11.9274 14.5021 10.6153 14.5 9.25C14.5 6.349 12.1502 4 9.25 4C6.349 4 4 6.349 4 9.25C4 12.1502 6.349 14.5 9.25 14.5C10.6153 14.5021 11.9274 13.9706 12.9062 13.0187L13.0187 12.9062V12.9062Z" fill="currentColor"></path></svg></button>';
+        echo '<div class="kitgenix-search-panel">';
+        echo '<span class="kitgenix-search-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.5232 13.4627L17.7355 16.6742L16.6742 17.7355L13.4627 14.5232C12.2678 15.4812 10.7815 16.0022 9.25 16C5.524 16 2.5 12.976 2.5 9.25C2.5 5.524 5.524 2.5 9.25 2.5C12.976 2.5 16 5.524 16 9.25C16.0022 10.7815 15.4812 12.2678 14.5232 13.4627ZM13.0187 12.9062C13.9706 11.9274 14.5021 10.6153 14.5 9.25C14.5 6.349 12.1502 4 9.25 4C6.349 4 4 6.349 4 9.25C4 12.1502 6.349 14.5 9.25 14.5C10.6153 14.5021 11.9274 13.9706 12.9062 13.0187L13.0187 12.9062V12.9062Z" fill="currentColor"></path></svg></span>';
+        echo '<input type="search" class="kitgenix-topbar-search-input" placeholder="'.esc_attr__('Search settings…','kitgenix-multistore').'" aria-label="'.esc_attr__('Search settings','kitgenix-multistore').'" autocomplete="off" />';
+        echo '<kbd class="kitgenix-search-kbd" title="Press / or ⌘K to search">/</kbd>';
+        echo '<button type="button" class="kitgenix-search-clear" aria-label="'.esc_attr__('Clear search','kitgenix-multistore').'" style="display:none;">&times;</button>';
+        echo '</div>';
+        echo '</div>';
+        echo '<button type="button" class="kitgenix-topbar-icon-btn kitgenix-theme-toggle" aria-label="'.esc_attr__('Toggle color theme','kitgenix-multistore').'" title="'.esc_attr__('Toggle color theme','kitgenix-multistore').'"><svg class="kitgenix-theme-icon-light" width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="3.25" stroke="currentColor" stroke-width="1.3"></circle><path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1 4.7 4.7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg><svg class="kitgenix-theme-icon-dark" width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.5 12.3A6.5 6.5 0 0 1 7.7 3.5a6.5 6.5 0 1 0 8.8 8.8Z" fill="currentColor"></path></svg></button>';
+        echo '<a class="kitgenix-topbar-icon-btn" href="'.esc_url(admin_url('admin.php?page=kitgenix')).'" title="'.esc_attr__('Kitgenix Hub','kitgenix-multistore').'" aria-label="Kitgenix Hub"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.25 3.25H9.25V9.25H3.25V3.25ZM10.75 3.25H16.75V9.25H10.75V3.25ZM3.25 10.75H9.25V16.75H3.25V10.75ZM10.75 10.75H16.75V16.75H10.75V10.75Z" fill="currentColor"></path></svg></a>';
+        echo '<button type="button" class="kitgenix-topbar-hamburger" aria-label="'.esc_attr__('Toggle navigation','kitgenix-multistore').'"><span></span><span></span><span></span></button>';
+        echo '</div>';
+        echo '</div>';
+        $notice=sanitize_text_field($_GET['kitgenix_multistore_sync_for_woocommerce_notice']??'');if($notice){echo '<div class="kitgenix-settings-layout"><div class="kitgenix-notice kitgenix-notice-success" role="status"><span class="kitgenix-notice-icon" aria-hidden="true">'.$this->icon('success').'</span><div class="kitgenix-notice-body"><p class="kitgenix-notice-text">'.esc_html($notice).'</p></div></div></div>';}
+        echo '<div class="kitgenix-settings-layout"><div class="kitgenix-settings-content" id="kitgenix-settings-content" tabindex="-1"><main class="kitgenix-multistore-sync-for-woocommerce-content">';$method='view_'.$view;$this->{$method}();echo '</main></div>';$this->render_sidebar($view);echo '</div></div>';}
+    private function render_sidebar(string$view=''):void{
+        if('support'===$view)return; // Support tab now hosts this content directly; avoid showing it twice.
+        $social_base=KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/images/social-media/';
+        echo '<aside class="kitgenix-settings-sidebar" aria-label="'.esc_attr__('Help and links','kitgenix-multistore').'">';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-body">'
+            .'<h2>'.esc_html__('Need Help?','kitgenix-multistore').'</h2>'
+            .'<p>'.esc_html__('Open the documentation for setup guidance or send us a support request if you need help configuring the plugin.','kitgenix-multistore').'</p>'
+            .'<div class="kitgenix-button-group">'
+            .'<a class="button button-secondary" href="'.esc_url('https://kitgenix.com/plugins/kitgenix-multistore-sync-for-woocommerce/documentation/').'" target="_blank" rel="noopener noreferrer">'.esc_html__('Documentation','kitgenix-multistore').'</a>'
+            .'<a class="button button-primary" href="'.esc_url('https://kitgenix.com/plugins/kitgenix-multistore-sync-for-woocommerce/support').'" target="_blank" rel="noopener noreferrer">'.esc_html__('Request Support','kitgenix-multistore').'</a>'
+            .'</div>'
+            .'</div></div>';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-body">'
+            .'<h2>'.esc_html__('Visit Our Official Facebook Group','kitgenix-multistore').'</h2>'
+            .'<p>'.esc_html__('Join the Kitgenix community to ask questions, share feedback, and keep up with product updates.','kitgenix-multistore').'</p>'
+            .'<div class="kitgenix-button-group">'
+            .'<a class="button button-secondary" href="'.esc_url('https://www.facebook.com/groups/kitgenix').'" target="_blank" rel="noopener noreferrer">'.esc_html__('Join Group','kitgenix-multistore').'</a>'
+            .'</div>'
+            .'</div></div>';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-body">'
+            .'<h2>'.esc_html__('Follow Us','kitgenix-multistore').'</h2>'
+            .'<p>'.esc_html__('Keep up with new releases, tutorials, and product news across our channels.','kitgenix-multistore').'</p>'
+            .'<div class="kitgenix-sidebar-social-grid">'
+            .'<a class="kitgenix-sidebar-social-link" href="https://kitgenix.com" target="_blank" rel="noopener noreferrer" aria-label="Website" title="Website"><img src="'.esc_url($social_base.'globe-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://www.facebook.com/kitgenix" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><img src="'.esc_url($social_base.'facebook-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://www.instagram.com/kitgenix/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><img src="'.esc_url($social_base.'instagram-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://www.youtube.com/@Kitgenix" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><img src="'.esc_url($social_base.'youtube-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://www.reddit.com/r/Kitgenix/" target="_blank" rel="noopener noreferrer" aria-label="Reddit" title="Reddit"><img src="'.esc_url($social_base.'reddit-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://www.linkedin.com/company/kitgenix" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><img src="'.esc_url($social_base.'linkedin-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://x.com/kitgenix" target="_blank" rel="noopener noreferrer" aria-label="X" title="X"><img src="'.esc_url($social_base.'x-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://www.tiktok.com/@kitgenix" target="_blank" rel="noopener noreferrer" aria-label="TikTok" title="TikTok"><img src="'.esc_url($social_base.'tiktok-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'<a class="kitgenix-sidebar-social-link" href="https://github.com/kitgenix" target="_blank" rel="noopener noreferrer" aria-label="GitHub" title="GitHub"><img src="'.esc_url($social_base.'github-solid.svg').'" alt="" width="16" height="16" aria-hidden="true" /></a>'
+            .'</div>'
+            .'</div></div>';
+        echo '</aside>';
+    }
+    private function tabs(string$current):void{
+        $link=function(string$k)use($current):array{return array('key'=>$k,'url'=>admin_url('admin.php?page=kitgenix-multistore&view='.$k),'active'=>$current===$k);};
+        $flat_item=function(array$link,string$label):void{
+            echo '<li class="kitgenix-menu-item '.($link['active']?'kitgenix-active':'').'"><a class="kitgenix-menu-link '.($link['active']?'kitgenix-active':'').'" href="'.esc_url($link['url']).'">'.esc_html($label).'</a></li>';
+        };
+        $submenu_item=function(array$link,string$icon,string$title,string$desc):string{
+            return '<a class="kitgenix-submenu-item" href="'.esc_url($link['url']).'"><span class="kitgenix-submenu-icon">'.$icon.'</span><span class="kitgenix-submenu-text"><span class="kitgenix-submenu-title">'.esc_html($title).'</span><span class="kitgenix-submenu-desc">'.esc_html($desc).'</span></span></a>';
+        };
+        $dropdown=function(string$label,array$member_keys,array$items)use($current):void{
+            $active=in_array($current,$member_keys,true);
+            echo '<li class="kitgenix-menu-item kitgenix-has-dropdown '.($active?'kitgenix-active':'').'">'
+                .'<button type="button" class="kitgenix-menu-link kitgenix-menu-toggle" aria-haspopup="true" aria-expanded="false">'.esc_html($label).'<span class="kitgenix-menu-caret"><svg width="12" height="12" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.99999 10.879L13.7125 7.1665L14.773 8.227L9.99999 13L5.22699 8.227L6.28749 7.1665L9.99999 10.879Z" fill="currentColor"></path></svg></span></button>'
+                .'<div class="kitgenix-submenu">'.implode('',$items).'</div>'
+                .'</li>';
+        };
+
+        $icon_products='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5 16.5 6v8L10 17.5 3.5 14V6L10 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M3.5 6 10 9.5 16.5 6M10 9.5V17.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>';
+        $icon_inventory='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="4" width="13" height="4" rx="1" stroke="currentColor" stroke-width="1.3"></rect><rect x="3.5" y="10" width="13" height="4" rx="1" stroke="currentColor" stroke-width="1.3"></rect><path d="M6 6h.01M6 12h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>';
+        $icon_coupons='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.17489 2.57495L16.5991 3.6362L17.6596 11.0612L10.7656 17.9552C10.625 18.0958 10.4343 18.1748 10.2354 18.1748C10.0365 18.1748 9.84578 18.0958 9.70514 17.9552L2.28014 10.5302C2.13953 10.3896 2.06055 10.1988 2.06055 9.99995C2.06055 9.80108 2.13953 9.61035 2.28014 9.4697L9.17489 2.57495ZM9.70514 4.16645L3.87089 9.99995L10.2354 16.3637L16.0689 10.5302L15.2739 4.96145L9.70514 4.16645ZM11.2951 8.93945C11.0138 8.65799 10.8557 8.27629 10.8558 7.87831C10.8559 7.68125 10.8947 7.48613 10.9701 7.30409C11.0456 7.12204 11.1561 6.95664 11.2955 6.81733C11.4349 6.67801 11.6003 6.56751 11.7824 6.49213C11.9645 6.41675 12.1596 6.37797 12.3567 6.37801C12.7546 6.37808 13.1363 6.53624 13.4176 6.8177C13.699 7.09916 13.857 7.48087 13.857 7.87884C13.8569 8.27682 13.6987 8.65846 13.4173 8.93983C13.1358 9.22119 12.7541 9.37921 12.3561 9.37914C11.9581 9.37907 11.5765 9.22091 11.2951 8.93945Z" fill="currentColor"></path></svg>';
+        $icon_orders='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3.5h1.5l1.7 9.3a1 1 0 0 0 1 .82h6.66a1 1 0 0 0 .98-.8L16 7H5.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="8.2" cy="16.3" r="1" fill="currentColor"></circle><circle cx="13.5" cy="16.3" r="1" fill="currentColor"></circle></svg>';
+        $icon_customers='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="7.5" cy="7" r="2.5" stroke="currentColor" stroke-width="1.3"></circle><path d="M2.8 16.5c.6-2.8 2.4-4.5 4.7-4.5s4.1 1.7 4.7 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path><circle cx="14" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"></circle><path d="M12.8 12.3c1.8.2 3.2 1.7 3.7 4.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>';
+        $icon_analytics='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 16.5V11M8 16.5V7M12.5 16.5V9.5M17 16.5V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>';
+        $icon_sync='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15.5313 12.3274C16.0179 11.1711 16.1299 9.89137 15.8516 8.66813C15.5732 7.4449 14.9185 6.33966 13.9795 5.5078C13.0404 4.67595 11.8643 4.15931 10.6164 4.03053C9.36853 3.90175 8.11167 4.16731 7.02253 4.78986L6.27853 3.48711C7.41675 2.83657 8.70567 2.49589 10.0167 2.49905C11.3277 2.5022 12.615 2.8491 13.75 3.50511C17.1175 5.44911 18.4075 9.61161 16.8378 13.0826L17.8443 13.6631L14.7205 15.3236L14.5968 11.7881L15.5313 12.3274V12.3274ZM4.46878 7.67286C3.98214 8.82914 3.87012 10.1089 4.14847 11.3321C4.42682 12.5553 5.08154 13.6606 6.02058 14.4924C6.95963 15.3243 8.13577 15.8409 9.38365 15.9697C10.6315 16.0985 11.8884 15.8329 12.9775 15.2104L13.7215 16.5131C12.5833 17.1637 11.2944 17.5043 9.98338 17.5012C8.67237 17.498 7.38511 17.1511 6.25003 16.4951C2.88253 14.5511 1.59253 10.3886 3.16228 6.91761L2.15503 6.33786L5.27878 4.67736L5.40253 8.21286L4.46803 7.67361L4.46878 7.67286Z" fill="currentColor"></path></svg>';
+        $icon_automations='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 2.5 4.5 11.5h4.2L8 17.5l7-9.5H10.8L11 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>';
+        $icon_integrations='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 4v3M13 4v3M5.5 7h9v2.5a4.5 4.5 0 0 1-9 0V7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M10 14v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>';
+        $icon_doctor='<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 10h3l1.5-4 2.5 8 2-6 1.5 2h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+
+        $flat_item($link('dashboard'),'Dashboard');
+        $flat_item($link('stores'),'Stores');
+        $dropdown('Catalog',array('products','inventory','coupons'),array(
+            $submenu_item($link('products'),$icon_products,'Products','Network products with stable UUID mappings'),
+            $submenu_item($link('inventory'),$icon_inventory,'Inventory','Authoritative stock levels across every store'),
+            $submenu_item($link('coupons'),$icon_coupons,'Coupons','Coupons synchronised from the control store'),
+        ));
+        $dropdown('Sales',array('orders','customers','analytics'),array(
+            $submenu_item($link('orders'),$icon_orders,'Orders','Search, export and manage orders network-wide'),
+            $submenu_item($link('customers'),$icon_customers,'Customers','Unique customer records across connected stores'),
+            $submenu_item($link('analytics'),$icon_analytics,'Analytics','30-day network sales, split by currency'),
+        ));
+        $dropdown('Sync',array('sync','automations','integrations','doctor'),array(
+            $submenu_item($link('sync'),$icon_sync,'Sync Centre','Events, deliveries and open conflicts'),
+            $submenu_item($link('automations'),$icon_automations,'Automations','Rules that react to stock and order changes'),
+            $submenu_item($link('integrations'),$icon_integrations,'Integrations','Adapter status for WooCommerce and extensions'),
+            $submenu_item($link('doctor'),$icon_doctor,'Network Doctor','Diagnose connectivity and delivery health'),
+        ));
+        $flat_item($link('settings'),'Settings');
+        $flat_item($link('logs'),__('Log','kitgenix-multistore'));
+        $flat_item($link('support'),__('Support','kitgenix-multistore'));
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       Small inline icon set reused across cards / empty states / notices.
+       Purely presentational — returns raw (trusted, hand-authored) SVG.
+       ───────────────────────────────────────────────────────────────── */
+    private function icon(string$name):string{
+        $icons=array(
+            'success'=>'<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 10.5 8 14.5 16 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+            'warn'=>'<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 2.5 16.5h15L10 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M10 8.2v3.2M10 14h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>',
+            'store'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 7l1-4h12l1 4M3 7v9a1 1 0 0 0 1 1h3v-5h6v5h3a1 1 0 0 0 1-1V7M3 7h14" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>',
+            'link'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 11.5a3 3 0 0 0 4 .25l2-2a3 3 0 0 0-4.24-4.24l-1 1M11.5 8.5a3 3 0 0 0-4-.25l-2 2a3 3 0 0 0 4.24 4.24l1-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>',
+            'box'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5 16.5 6v8L10 17.5 3.5 14V6L10 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M3.5 6 10 9.5 16.5 6M10 9.5V17.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>',
+            'gear'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="2.6" stroke="currentColor" stroke-width="1.3"></circle><path d="M10 3v2M10 15v2M17 10h-2M5 10H3M14.9 5.1l-1.4 1.4M6.5 13.5l-1.4 1.4M14.9 14.9l-1.4-1.4M6.5 6.5 5.1 5.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>',
+            'clock'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.3"></circle><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+            'users'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="7.5" cy="7" r="2.5" stroke="currentColor" stroke-width="1.3"></circle><path d="M2.8 16.5c.6-2.8 2.4-4.5 4.7-4.5s4.1 1.7 4.7 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path><circle cx="14" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"></circle><path d="M12.8 12.3c1.8.2 3.2 1.7 3.7 4.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>',
+            'coupon'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.17 2.57 16.6 3.64l1.06 7.42-6.9 6.9a.83.83 0 0 1-1.17 0L2.28 10.53a.83.83 0 0 1 0-1.17l6.89-6.79Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><circle cx="12.35" cy="7.88" r="1.5" fill="currentColor"></circle></svg>',
+            'heart'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 17s-6.5-4-6.5-9A3.5 3.5 0 0 1 10 5.8 3.5 3.5 0 0 1 16.5 8c0 5-6.5 9-6.5 9Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>',
+            'doctor'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 10h3l1.5-4 2.5 8 2-6 1.5 2h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+            'sync'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 10a6 6 0 0 1-10.6 3.8M4 10a6 6 0 0 1 10.6-3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4 13.8V17h3.2M16 6.2V3h-3.2" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'tools'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5 4.5a3 3 0 0 0-3.9 3.9l-6.1 6.1 2 2 6.1-6.1a3 3 0 0 0 3.9-3.9l-2.1 2.1-2-2 2.1-2.1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'check'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 10.5 8 14.5 16 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'logs'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3" width="13" height="14" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 7h7M6.5 10h7M6.5 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+            'audit'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 3.5h7l3 3V16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 9h6M7 12h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+            'chat'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 5.5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-3.5 3v-3a2 2 0 0 1-2-2v-6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'star'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 3.2l2.02 4.1 4.53.66-3.28 3.2.78 4.52L10 13.5l-4.05 2.13.78-4.52-3.28-3.2 4.53-.66L10 3.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'copy'=>'<svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="7" width="9.5" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M13 7V4.5A1.5 1.5 0 0 0 11.5 3h-7A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13H7" stroke="currentColor" stroke-width="1.5"/></svg>',
+            'download'=>'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 3v9.5M6 9l4 4 4-4M4 16.5h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+            'search'=>'<svg width="26" height="26" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.3"></circle><path d="m17 17-3.5-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>',
+        );
+        return$icons[$name]??'';
+    }
+
+    private function view_dashboard():void{
+        $stores=$this->plugin->get('stores')->all();$events=$this->plugin->get('events')->counts();$inventory=$this->plugin->get('inventory');$products=$this->plugin->get('mappings')->count('product');$orders=$this->plugin->get('orders')->count();$active=count(array_filter($stores,fn($s)=>'active'===$s['status']));$offline=count(array_filter($stores,fn($s)=>'offline'===$s['status']));
+        echo '<div class="kitgenix-stat-grid">'
+            .$this->metric('Connected stores',$active,$offline?'Offline: '.$offline:'All healthy')
+            .$this->metric('Network products',$products,'Stable UUID mappings')
+            .$this->metric('Inventory records',$inventory->count(),$inventory->low_stock_count().' low / out')
+            .$this->metric('Remote orders',$orders,'Central order snapshots')
+            .'</div>';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Sync engine</h2><p>Live counts across every queued delivery.</p></div></div><div class="kitgenix-card-head-actions"><a class="button" href="'.esc_url(admin_url('admin.php?page=kitgenix-multistore&view=sync')).'">View Sync Centre</a></div></div><div class="kitgenix-card-body"><div class="kitgenix-stat-grid" style="margin-bottom:0">';
+        foreach(array('pending'=>'Pending','processing'=>'Processing','retrying'=>'Retrying','completed'=>'Completed','failed'=>'Failed')as$k=>$label)echo $this->metric($label,(int)($events[$k]??0));
+        echo '</div></div></div>';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('link').'</span><div class="kitgenix-card-head-text"><h2>Architecture status</h2></div></div></div><div class="kitgenix-card-body"><p>Server-to-server HMAC authentication, persistent deliveries, idempotent event IDs, inventory revisions and automatic retry/reconciliation are active. <strong>'.esc_html((string)$this->plugin->get('conflicts')->open_count()).'</strong> sync conflicts currently require review.</p></div></div>';
+    }
+
+    private function view_stores(): void {
+        $settings = $this->plugin->get('settings'); $stores = $this->plugin->get('stores')->all();
+        echo '<div class="kitgenix-stat-grid">';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('store').'</span><div class="kitgenix-card-head-text"><h2>Network role</h2></div></div></div><div class="kitgenix-card-body">';
+        echo '<div class="kitgenix-settings-group">'
+            .'<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label>Role</label></div><div class="kitgenix-setting-row-control"><span class="kitgenix-badge brand">'.esc_html(ucfirst($settings->role())).'</span></div></div>'
+            .'<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label>Mode</label></div><div class="kitgenix-setting-row-control">'.esc_html('native_multisite'===$settings->get('network_mode','paired')?'Native WordPress Multisite':'Paired stores').'</div></div>'
+            .'<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label>Site identifier</label></div><div class="kitgenix-setting-row-control"><code>'.esc_html(Uuid::site()).'</code></div></div>'
+            .'</div>';
+        if($settings->is_connected()&&'native_multisite'!==$settings->get('network_mode','paired')){
+            echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_generate_pair">';
+            wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_generate_pair');
+            echo '<div class="kitgenix-button-group">';submit_button('Generate one-time pairing code','secondary','submit',false);echo '</div></form>';
+            if(!empty($_GET['pair_code']))echo '<div class="kitgenix-notice kitgenix-notice-info" role="status"><span class="kitgenix-notice-icon" aria-hidden="true">'.$this->icon('success').'</span><div class="kitgenix-notice-body"><p class="kitgenix-notice-title">'.esc_html(sanitize_text_field($_GET['pair_code'])).'</p><p class="kitgenix-notice-text">Expires in 10 minutes.</p></div></div>';
+        }
+        echo '</div></div>';
+        if($settings->is_control()&&'native_multisite'!==$settings->get('network_mode','paired')){
+            echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('link').'</span><div class="kitgenix-card-head-text"><h2>Connect a store</h2></div></div></div><div class="kitgenix-card-body"><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_connect_store">';
+            wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_connect_store');
+            echo '<div class="kitgenix-settings-group">'
+                .'<div class="kitgenix-setting-row kitgenix-setting-row-stacked"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_store_url">Store URL</label></div><div class="kitgenix-setting-row-control"><input type="url" id="kitgenix_field_store_url" name="store_url" placeholder="https://store.example.com" required></div></div>'
+                .'<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_pair_code">Pairing code</label></div><div class="kitgenix-setting-row-control"><input type="text" id="kitgenix_field_pair_code" name="pair_code" required></div></div>'
+                .'</div><div class="kitgenix-button-group kitgenix-button-group-end">';
+            submit_button('Connect store','primary','submit',false);
+            echo '</div></form></div></div>';
+        }
+        echo '</div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('store').'</span><div class="kitgenix-card-head-text"><h2>Connected stores</h2><p>Pause a store to keep its connection and mappings without sending new deliveries.</p></div></div></div><div class="kitgenix-card-body">';
+        if($stores){
+            echo '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Store</th><th>Role</th><th>Status</th><th>Last seen</th><th class="kitgenix-table-actions-col">Actions</th></tr></thead><tbody>';
+            foreach($stores as$st){
+                $paused='disabled'===$st['status'];
+                $toggle=wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_toggle_store&uuid='.rawurlencode($st['uuid']).'&status='.($paused?'active':'disabled')),'kitgenix_multistore_sync_for_woocommerce_toggle_store_'.$st['uuid']);
+                $badge=match($st['status']){'active'=>'success','offline'=>'danger','disabled'=>'neutral',default=>'neutral'};
+                echo '<tr><td><strong>'.esc_html($st['name']).'</strong><br><a href="'.esc_url($st['url']).'" target="_blank" rel="noopener">'.esc_html($st['url']).'</a></td><td>'.esc_html(ucfirst($st['role'])).'</td><td><span class="kitgenix-badge '.$badge.' kitgenix-badge-dot">'.esc_html($st['status']).'</span></td><td>'.esc_html($st['last_seen']?:'—').'</td><td><div class="kitgenix-table-actions"><a class="button" href="'.esc_url($toggle).'">'.($paused?'Resume':'Pause').'</a> <a class="button-link-delete" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_delete_store&uuid='.rawurlencode($st['uuid'])),'kitgenix_multistore_sync_for_woocommerce_delete_store')).'" data-kitgenix-multistore-sync-for-woocommerce_confirm="Disconnect this store?">Disconnect</a></div></td></tr>';
+            }
+            echo '</tbody></table></div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><span class="kitgenix-empty-state-icon" aria-hidden="true">'.$this->icon('store').'</span><h3 class="kitgenix-empty-state-title">No stores connected yet</h3><p class="kitgenix-empty-state-desc">Generate a pairing code above, or connect a store once you have one.</p></div>';
+        }
+        echo '</div></div>';
+
+        if(!$settings->is_control())return;
+        $connected=array_values(array_filter($stores,static fn($st)=>'connected'===($st['role']??'')));
+        if($connected){
+            $pricing=$settings->pricing_rules();
+            echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Store pricing rules</h2><p>Apply a percentage to regular, sale and variation prices before the destination payload is sent.</p></div></div></div><div class="kitgenix-card-body"><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+            wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_save_store_pricing_rules');
+            echo '<input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_save_store_pricing_rules"><div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Store</th><th>Enabled</th><th>Adjustment</th><th>Example</th></tr></thead><tbody>';
+            foreach($connected as$st){
+                $r=$pricing[$st['uuid']]??array('enabled'=>'no','percentage'=>0);$pct=(float)($r['percentage']??0);
+                echo '<tr><td><strong>'.esc_html($st['name']).'</strong></td><td><label class="kitgenix-toggle"><input type="checkbox" class="kitgenix-toggle-input" name="pricing_enabled['.esc_attr($st['uuid']).']" value="yes" '.checked(($r['enabled']??'no'),'yes',false).'><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span></label></td><td><input type="number" step="0.01" min="-100" max="1000" name="pricing_percentage['.esc_attr($st['uuid']).']" value="'.esc_attr((string)$pct).'" style="max-width:110px"> %</td><td><code>100.00 → '.esc_html(number_format(100*(1+$pct/100),2,'.','')).'</code></td></tr>';
+            }
+            echo '</tbody></table></div><p style="margin-top:14px"><label class="kitgenix-toggle"><input type="checkbox" class="kitgenix-toggle-input" name="resync_products" value="yes" checked><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span><span class="kitgenix-toggle-label">Queue all products after saving</span></label></p><div class="kitgenix-button-group kitgenix-button-group-end">';
+            submit_button('Save pricing rules','primary','submit',false);
+            echo '</div></form></div></div>';
+
+            $policies=$settings->policies();
+            echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Per-store publish &amp; update policies</h2><p>Choose exactly which fields a store receives on first publish and on later updates.</p></div></div></div><div class="kitgenix-card-body"><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+            wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_save_store_policies');
+            echo '<input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_save_store_policies">';
+            foreach($connected as$st){
+                $policy=$policies[$st['uuid']]??$settings->default_policy();
+                echo '<div class="kitgenix-card" data-kitgenix-collapsible><button type="button" class="kitgenix-collapsible-trigger" aria-expanded="true"><span class="kitgenix-card-head-main"><span class="kitgenix-collapsible-title">'.esc_html($st['name']).'</span></span><svg class="kitgenix-collapsible-chevron" aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7.5 10 12.5 15 7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button><div class="kitgenix-collapsible-panel"><div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Field</th><th>Initial publish</th><th>Later updates</th></tr></thead><tbody>';
+                foreach(Settings::policy_fields()as$key=>$label){
+                    $row=$policy['fields'][$key]??array('publish'=>'yes','update'=>'yes');
+                    echo '<tr><td>'.esc_html($label).'</td><td><label class="kitgenix-toggle"><input type="checkbox" class="kitgenix-toggle-input" name="policy['.esc_attr($st['uuid']).']['.esc_attr($key).'][publish]" value="yes" '.checked(($row['publish']??'yes'),'yes',false).'><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span></label></td><td><label class="kitgenix-toggle"><input type="checkbox" class="kitgenix-toggle-input" name="policy['.esc_attr($st['uuid']).']['.esc_attr($key).'][update]" value="yes" '.checked(($row['update']??'yes'),'yes',false).'><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span></label></td></tr>';
+                }
+                echo '</tbody></table></div></div></div>';
+            }
+            echo '<p style="margin-top:14px"><label class="kitgenix-toggle"><input type="checkbox" class="kitgenix-toggle-input" name="resync_products" value="yes"><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span><span class="kitgenix-toggle-label">Queue products after saving policies</span></label></p><div class="kitgenix-button-group kitgenix-button-group-end">';
+            submit_button('Save store policies','primary','submit',false);
+            echo '</div></form></div></div>';
+        }
+
+        $groups=$settings->groups();
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('store').'</span><div class="kitgenix-card-head-text"><h2>Store groups</h2></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-stat-grid" style="margin-bottom:0"><div><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_create_store_group">';
+        wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_create_store_group');
+        echo '<div class="kitgenix-settings-group"><div class="kitgenix-setting-row kitgenix-setting-row-stacked"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_group_name">Group name</label></div><div class="kitgenix-setting-row-control"><input type="text" id="kitgenix_field_group_name" name="group_name" required></div></div><div class="kitgenix-setting-row kitgenix-setting-row-stacked"><div class="kitgenix-setting-row-label"><label>Stores</label></div><div class="kitgenix-setting-row-control"><span class="kitgenix-multistore-sync-for-woocommerce-checklist">';
+        foreach($connected as$st)echo '<label><input type="checkbox" name="group_stores[]" value="'.esc_attr($st['uuid']).'"> '.esc_html($st['name']).'</label>';
+        echo '</span></div></div></div><div class="kitgenix-button-group">';
+        submit_button('Create group','secondary','submit',false);
+        echo '</div></form></div><div>';
+        foreach($groups as$gid=>$group)echo '<div class="kitgenix-multistore-sync-for-woocommerce-rule"><div><strong>'.esc_html($group['name']).'</strong><small>'.esc_html(count($group['stores']).' stores').'</small></div><a class="button-link-delete" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_delete_store_group&group='.rawurlencode($gid)),'kitgenix_multistore_sync_for_woocommerce_delete_store_group_'.$gid)).'">Delete</a></div>';
+        if(!$groups)echo '<div class="kitgenix-empty-state"><p class="kitgenix-empty-state-title">No store groups yet</p></div>';
+        echo '</div></div></div></div>';
+    }
+
+    private function view_products():void{
+        $rows=$this->plugin->get('mappings')->for_store(Uuid::site(),'product',100);
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('box').'</span><div class="kitgenix-card-head-text"><h2>Network products</h2><p>Products use stable network IDs rather than WordPress post IDs or SKU alone.</p></div></div><div class="kitgenix-card-head-actions"><a class="button" href="'.esc_url(admin_url('edit.php?post_type=product')).'">Open WooCommerce products</a> <a class="button button-primary" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_sync_all_products'),'kitgenix_multistore_sync_for_woocommerce_sync_all_products')).'">Sync all products</a></div></div><div class="kitgenix-card-body">';
+        $has_rows=false;
+        ob_start();
+        echo '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Product</th><th>SKU</th><th>Network ID</th><th>Revision</th><th class="kitgenix-table-actions-col">Action</th></tr></thead><tbody>';
+        foreach($rows as$r){
+            $p=wc_get_product((int)$r['object_id']);if(!$p)continue;$has_rows=true;
+            echo '<tr><td><a href="'.esc_url(get_edit_post_link($p->get_id())).'"><strong>'.esc_html($p->get_name()).'</strong></a></td><td>'.esc_html($p->get_sku()?:'—').'</td><td><code>'.esc_html($r['network_id']).'</code></td><td>'.esc_html($r['last_revision']).'</td><td><div class="kitgenix-table-actions"><a class="button" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_sync_product&product_id='.$p->get_id()),'kitgenix_multistore_sync_for_woocommerce_sync_product_'.$p->get_id())).'">Sync now</a></div></td></tr>';
+        }
+        echo '</tbody></table></div>';
+        $table_html=ob_get_clean();
+        if($has_rows)echo $table_html;
+        else echo '<div class="kitgenix-empty-state"><span class="kitgenix-empty-state-icon" aria-hidden="true">'.$this->icon('box').'</span><h3 class="kitgenix-empty-state-title">No network products yet</h3><p class="kitgenix-empty-state-desc">Products gain a stable network ID the first time they are synchronised.</p></div>';
+        echo '</div></div>';
+    }
+
+    private function view_inventory():void{
+        $rows=$this->plugin->get('inventory')->all(100);
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('box').'</span><div class="kitgenix-card-head-text"><h2>Authoritative inventory</h2><p>The control store maintains a revisioned inventory state and repairs drift automatically.</p></div></div><div class="kitgenix-card-head-actions"><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_reconcile">';
+        wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_reconcile');
+        submit_button('Run reconciliation','secondary','submit',false);
+        echo '</form></div></div><div class="kitgenix-card-body">';
+        if($rows){
+            echo '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Network ID</th><th>Quantity</th><th>Status</th><th>Revision</th><th>Source</th><th>Updated</th></tr></thead><tbody>';
+            foreach($rows as$r)echo '<tr><td><code>'.esc_html($r['network_id']).'</code></td><td><strong>'.esc_html(null===$r['quantity']?'—':wc_format_localized_decimal($r['quantity'])).'</strong></td><td>'.esc_html($r['stock_status']).'</td><td>'.esc_html($r['revision']).'</td><td><code>'.esc_html(substr($r['source_store_uuid'],0,8)).'…</code></td><td>'.esc_html($r['updated_at']).'</td></tr>';
+            echo '</tbody></table></div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><span class="kitgenix-empty-state-icon" aria-hidden="true">'.$this->icon('box').'</span><h3 class="kitgenix-empty-state-title">No inventory records yet</h3></div>';
+        }
+        echo '</div></div>';
+    }
+
+    private function view_orders(): void {
+        $repo = $this->plugin->get( 'orders' );
+        $page = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+        $search = sanitize_text_field( wp_unslash( $_GET['s'] ?? '' ) );
+        $status = sanitize_key( $_GET['status'] ?? '' );
+        $store = sanitize_text_field( $_GET['store_uuid'] ?? '' );
+        $result = $repo->query( array( 'limit' => 50, 'page' => $page, 'search' => $search, 'status' => $status, 'store_uuid' => $store ) );
+        $rows = $result['rows'];
+        $gateway = 'yes' === $this->plugin->get( 'settings' )->get( 'allow_remote_gateway_refunds', 'no' );
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('users').'</span><div class="kitgenix-card-head-text"><h2>Central network orders</h2><p>Search, export and manage orders across every indexed store.</p></div></div><div class="kitgenix-card-head-actions"><a class="button" href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_index_orders' ), 'kitgenix_multistore_sync_for_woocommerce_index_orders' ) ) . '">Index last 90 days</a></div></div><div class="kitgenix-card-body">';
+
+        echo '<form method="get" class="kitgenix-search-bar"><input type="hidden" name="page" value="kitgenix-multistore"><input type="hidden" name="view" value="orders"><div class="kitgenix-search-bar-input"><span class="kitgenix-search-bar-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.3"></circle><path d="m17 17-3.5-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg></span><input type="search" name="s" value="' . esc_attr( $search ) . '" placeholder="Order, customer, email or network ID"></div><div class="kitgenix-search-bar-filters"><select name="status"><option value="">All statuses</option>';
+        foreach ( wc_get_order_statuses() as $k => $label ) { $v = preg_replace( '/^wc-/', '', $k ); echo '<option value="' . esc_attr( $v ) . '" ' . selected( $status, $v, false ) . '>' . esc_html( $label ) . '</option>'; }
+        echo '</select><select name="store_uuid"><option value="">All stores</option>';
+        foreach ( $this->plugin->get( 'stores' )->all() as $st ) echo '<option value="' . esc_attr( $st['uuid'] ) . '" ' . selected( $store, $st['uuid'], false ) . '>' . esc_html( $st['name'] ) . '</option>';
+        echo '</select></div><div class="kitgenix-search-bar-actions"><button type="submit" class="button">Filter</button></div></form>';
+
+        $base_args = array( 's' => $search, 'status' => $status, 'store_uuid' => $store );
+        echo '<div class="kitgenix-card-head" style="border-bottom:0;margin-bottom:12px;padding-bottom:0"><div><strong>' . esc_html( (string) $result['total'] ) . ' indexed orders</strong></div><div class="kitgenix-button-group"><a class="button" href="' . esc_url( wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'kitgenix_multistore_sync_for_woocommerce_export_orders', 'format' => 'csv' ), $base_args ), admin_url( 'admin-post.php' ) ), 'kitgenix_multistore_sync_for_woocommerce_export_orders' ) ) . '">Export CSV</a> <a class="button" href="' . esc_url( wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'kitgenix_multistore_sync_for_woocommerce_export_orders', 'format' => 'xlsx' ), $base_args ), admin_url( 'admin-post.php' ) ), 'kitgenix_multistore_sync_for_woocommerce_export_orders' ) ) . '">Export XLSX</a></div></div>';
+
+        echo '<form id="kitgenix-multistore-sync-for-woocommerce-order-bulk" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_bulk_order_status">';
+        wp_nonce_field( 'kitgenix_multistore_sync_for_woocommerce_bulk_order_status' );
+        echo '<div class="kitgenix-button-group" style="margin-bottom:14px"><select name="status" required><option value="">Bulk status…</option>';
+        foreach ( wc_get_order_statuses() as $k => $label ) { $v = preg_replace( '/^wc-/', '', $k ); echo '<option value="' . esc_attr( $v ) . '">' . esc_html( $label ) . '</option>'; }
+        echo '</select><button type="submit" class="button">Apply</button></div></form>';
+
+        if ( $rows ) {
+        echo '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th><input type="checkbox" data-kitgenix-multistore-sync-for-woocommerce_check-all></th><th>Order</th><th>Store</th><th>Customer</th><th>Status</th><th>Total</th><th>Date</th><th>Documents</th><th class="kitgenix-table-actions-col">Actions</th></tr></thead><tbody>';
+        foreach ( $rows as $r ) {
+            $st = $this->plugin->get( 'stores' )->get( $r['store_uuid'] );
+            $payload = (array) ( $r['payload_array'] ?? array() );
+            $status_badge = match(true){
+                in_array($r['status'],array('completed','processing'),true)=>'success',
+                in_array($r['status'],array('cancelled','failed','refunded'),true)=>'danger',
+                in_array($r['status'],array('pending','on-hold'),true)=>'warning',
+                default=>'neutral',
+            };
+            echo '<tr><td><input form="kitgenix-multistore-sync-for-woocommerce-order-bulk" type="checkbox" name="network_ids[]" value="' . esc_attr( $r['network_id'] ) . '"></td><td><strong>#' . esc_html( $r['order_number'] ) . '</strong><br><code>' . esc_html( substr( $r['network_id'], 0, 13 ) ) . '…</code></td><td>' . esc_html( $st['name'] ?? substr( $r['store_uuid'], 0, 8 ) . '…' ) . '</td><td>' . esc_html( $r['customer_name'] ) . '<br><small>' . esc_html( $r['customer_email'] ) . '</small></td><td><span class="kitgenix-badge ' . $status_badge . ' kitgenix-badge-dot">' . esc_html( wc_get_order_status_name( $r['status'] ) ) . '</span></td><td>' . wp_kses_post( wc_price( (float) $r['total'], array( 'currency' => $r['currency'] ) ) ) . '</td><td>' . esc_html( $r['order_created_at'] ?: $r['synced_at'] ) . '</td><td>';
+            $documents = (array) ( $payload['pdf_documents'] ?? array() );
+            if ( $documents ) {
+                foreach ( $documents as $type => $doc ) {
+                    if ( empty( $doc['url'] ) ) continue;
+                    echo '<a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( $doc['url'] ) . '">' . esc_html( $doc['title'] ?? strtoupper( (string) $type ) ) . '</a> ';
+                }
+            } else echo '—';
+            echo '</td><td><details><summary class="button">Manage</summary><div class="kitgenix-multistore-sync-for-woocommerce-order-actions"><a class="button" href="' . esc_url( admin_url( 'admin.php?page=kitgenix-multistore&view=sync' ) ) . '">Sync history</a>';
+
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_remote_order_note"><input type="hidden" name="network_id" value="' . esc_attr( $r['network_id'] ) . '">';
+            wp_nonce_field( 'kitgenix_multistore_sync_for_woocommerce_remote_order_note_' . $r['network_id'] );
+            echo '<div class="kitgenix-settings-group"><div class="kitgenix-setting-row-stacked"><label>Order note</label><textarea name="note" rows="2" required></textarea></div><label class="kitgenix-toggle" style="margin:8px 0"><input type="checkbox" class="kitgenix-toggle-input" name="customer_note" value="1"><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span><span class="kitgenix-toggle-label">Customer-visible</span></label></div><button type="submit" class="button">Add note</button></form>';
+
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_remote_order_refund"><input type="hidden" name="network_id" value="' . esc_attr( $r['network_id'] ) . '">';
+            wp_nonce_field( 'kitgenix_multistore_sync_for_woocommerce_remote_order_refund_' . $r['network_id'] );
+            echo '<div class="kitgenix-settings-group"><div class="kitgenix-setting-row-stacked"><label>Refund amount</label><input type="number" step="0.01" min="0.01" max="' . esc_attr( (string) $r['total'] ) . '" name="amount" required></div><div class="kitgenix-setting-row-stacked"><label>Reason</label><input type="text" name="reason"></div>';
+            if ( $gateway ) echo '<label class="kitgenix-toggle" style="margin:8px 0"><input type="checkbox" class="kitgenix-toggle-input" name="refund_payment" value="1"><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span><span class="kitgenix-toggle-label">Refund through gateway</span></label>';
+            echo '</div><button type="submit" class="button">Create refund</button></form></div></details></td></tr>';
+        }
+        echo '</tbody></table></div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><span class="kitgenix-empty-state-icon" aria-hidden="true">'.$this->icon('search').'</span><h3 class="kitgenix-empty-state-title">No matching orders</h3><p class="kitgenix-empty-state-desc">Try a different search or index recent orders above.</p></div>';
+        }
+        if ( $result['pages'] > 1 ) echo '<div class="kitgenix-multistore-sync-for-woocommerce-pagination">' . wp_kses_post( paginate_links( array( 'base' => add_query_arg( 'paged', '%#%' ), 'format' => '', 'current' => $page, 'total' => $result['pages'], 'type' => 'plain' ) ) ) . '</div>';
+        echo '</div></div>';
+    }
+
+    private function view_customers():void{
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('users').'</span><div class="kitgenix-card-head-text"><h2>Network customers</h2><p>Customer synchronisation is privacy-sensitive and disabled by default. When enabled, connected stores send customer snapshots only to the control store.</p></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-stat-grid" style="margin-bottom:0">'.$this->metric('Unique customer records',(string)$this->plugin->get('customers')->count(),'Across every connected store').'</div></div></div>';
+    }
+
+    private function view_coupons():void{
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('coupon').'</span><div class="kitgenix-card-head-text"><h2>Network coupons</h2><p>Core WooCommerce coupon settings created or updated on the control store are synchronised to connected stores.</p></div></div><div class="kitgenix-card-head-actions"><a class="button button-primary" href="'.esc_url(admin_url('edit.php?post_type=shop_coupon')).'">Manage coupons</a></div></div></div>';
+    }
+
+    private function view_sync():void{
+        $events=$this->plugin->get('events')->recent(50);$deliveries=$this->plugin->get('events')->recent_deliveries(100);$conflicts=$this->plugin->get('conflicts')->recent(50,'open');
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('warn').'</span><div class="kitgenix-card-head-text"><h2>Open conflicts</h2><p>Errors that need human review stay visible until resolved or ignored.</p></div></div><div class="kitgenix-card-head-actions"><span class="kitgenix-badge '.($conflicts?'warning':'success').'">'.esc_html((string)count($conflicts)).' open</span></div></div><div class="kitgenix-card-body">';
+        if($conflicts){
+            echo '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Time</th><th>Type</th><th>Category</th><th>Entity</th><th>Message</th><th class="kitgenix-table-actions-col"></th></tr></thead><tbody>';
+            foreach($conflicts as$c){
+                $category_note=ErrorCatalog::get_category_and_note((string)$c['conflict_type']);
+                $badge=ErrorCatalog::is_recoverable((string)$c['conflict_type'])?'warning':'danger';
+                echo '<tr><td>'.esc_html($c['created_at']).'</td><td><code>'.esc_html($c['conflict_type']).'</code></td><td><span class="kitgenix-badge '.$badge.'" title="'.esc_attr($category_note['note']).'">'.esc_html($category_note['category']).'</span></td><td>'.esc_html($c['entity_type']).'<br><code>'.esc_html(substr($c['network_id'],0,13)).'…</code></td><td>'.esc_html($c['message']).'</td><td><div class="kitgenix-table-actions"><a class="button" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_resolve_conflict&uuid='.rawurlencode($c['conflict_uuid'])),'kitgenix_multistore_sync_for_woocommerce_resolve_conflict_'.$c['conflict_uuid'])).'">Mark resolved</a></div></td></tr>';
+            }
+            echo '</tbody></table></div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><span class="kitgenix-empty-state-icon" aria-hidden="true">'.$this->icon('success').'</span><h3 class="kitgenix-empty-state-title">No open conflicts</h3></div>';
+        }
+        echo '</div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('clock').'</span><div class="kitgenix-card-head-text"><h2>Recent events</h2></div></div></div><div class="kitgenix-card-body">';
+        if($events){
+            echo '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Time</th><th>Event</th><th>Entity</th><th>Revision</th><th>Status</th></tr></thead><tbody>';
+            foreach($events as$e){
+                $badge=match($e['status']){'completed'=>'success','failed'=>'danger','pending','processing','retrying'=>'warning',default=>'neutral'};
+                echo '<tr><td>'.esc_html($e['created_at']).'</td><td><strong>'.esc_html($e['event_type']).'</strong><br><code>'.esc_html(substr($e['event_uuid'],0,13)).'…</code></td><td>'.esc_html($e['entity_type']).'<br><code>'.esc_html(substr($e['network_id'],0,13)).'…</code></td><td>'.esc_html($e['revision']).'</td><td><span class="kitgenix-badge '.$badge.' kitgenix-badge-dot">'.esc_html($e['status']).'</span></td></tr>';
+            }
+            echo '</tbody></table></div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><p class="kitgenix-empty-state-title">No events yet</p></div>';
+        }
+        echo '</div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('link').'</span><div class="kitgenix-card-head-text"><h2>Deliveries</h2></div></div></div><div class="kitgenix-card-body">';
+        if($deliveries){
+            echo '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>Event</th><th>Store</th><th>Status</th><th>Attempts</th><th>Error</th><th>Next attempt</th><th class="kitgenix-table-actions-col"></th></tr></thead><tbody>';
+            foreach($deliveries as$d){
+                $badge=match($d['status']){'completed'=>'success','failed'=>'danger','pending','processing','retrying'=>'warning',default=>'neutral'};
+                echo '<tr><td><code>'.esc_html(substr($d['event_uuid'],0,13)).'…</code></td><td><code>'.esc_html(substr($d['store_uuid'],0,13)).'…</code></td><td><span class="kitgenix-badge '.$badge.' kitgenix-badge-dot">'.esc_html($d['status']).'</span></td><td>'.esc_html($d['attempts']).'</td><td>'.esc_html($d['last_error']?:'—').'</td><td>'.esc_html($d['next_attempt']?:'—').'</td><td>';
+                if('failed'===$d['status'])echo '<div class="kitgenix-table-actions"><a class="button" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_retry_delivery&event='.rawurlencode($d['event_uuid']).'&store='.rawurlencode($d['store_uuid'])),'kitgenix_multistore_sync_for_woocommerce_retry_delivery_'.$d['event_uuid'].'_'.$d['store_uuid'])).'">Retry</a></div>';
+                echo '</td></tr>';
+            }
+            echo '</tbody></table></div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><p class="kitgenix-empty-state-title">No deliveries yet</p></div>';
+        }
+        echo '</div></div>';
+    }
+
+    private function view_automations():void{
+        $rules=$this->plugin->get('automations')->all();
+        echo '<div class="kitgenix-stat-grid">';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Add inventory automation</h2></div></div></div><div class="kitgenix-card-body"><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_create_automation">';
+        wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_create_automation');
+        echo '<div class="kitgenix-settings-group">'
+            .'<div class="kitgenix-setting-row-stacked"><label for="kitgenix_field_automation_name">Name</label><input type="text" id="kitgenix_field_automation_name" name="name" required placeholder="Pause low-stock products"></div>'
+            .'<div class="kitgenix-setting-row-stacked"><label for="kitgenix_field_automation_trigger">Trigger</label><select id="kitgenix_field_automation_trigger" name="trigger"><option value="stock_below">Stock falls below</option><option value="stock_above">Stock rises above</option></select></div>'
+            .'<div class="kitgenix-setting-row-stacked"><label for="kitgenix_field_automation_threshold">Threshold</label><input type="number" step="0.0001" id="kitgenix_field_automation_threshold" name="threshold" value="1"></div>'
+            .'<div class="kitgenix-setting-row-stacked"><label for="kitgenix_field_automation_status">Set product status</label><select id="kitgenix_field_automation_status" name="status"><option value="draft">Draft</option><option value="publish">Published</option><option value="private">Private</option></select></div>'
+            .'</div><div class="kitgenix-button-group">';
+        submit_button('Create automation','primary','submit',false);
+        echo '</div></form></div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Active rules</h2></div></div></div><div class="kitgenix-card-body">';
+        foreach($rules as$r)echo '<div class="kitgenix-multistore-sync-for-woocommerce-rule"><div><strong>'.esc_html($r['name']).'</strong><small>'.esc_html($r['trigger_type'].' → '.$r['action_type']).'</small></div><a class="button-link-delete" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=kitgenix_multistore_sync_for_woocommerce_delete_automation&id='.(int)$r['id']),'kitgenix_multistore_sync_for_woocommerce_delete_automation_'.(int)$r['id'])).'">Delete</a></div>';
+        if(!$rules)echo '<div class="kitgenix-empty-state"><p class="kitgenix-empty-state-title">No automations yet</p></div>';
+        echo '</div></div>';
+        echo '</div>';
+    }
+
+    private function view_analytics():void{
+        $rows=$this->plugin->get('orders')->totals_by_currency(30);
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>30-day network sales</h2><p>Totals are separated by currency rather than incorrectly combining GBP, EUR or other currencies.</p></div></div></div><div class="kitgenix-card-body">';
+        if($rows){
+            echo '<div class="kitgenix-stat-grid" style="margin-bottom:0">';
+            foreach($rows as$r)echo $this->metric($r['currency'].' revenue',wc_price((float)$r['revenue'],array('currency'=>$r['currency'])),(int)$r['orders'].' remote orders',true);
+            echo '</div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><p class="kitgenix-empty-state-title">No remote order data yet</p></div>';
+        }
+        echo '</div></div>';
+    }
+
+    private function view_integrations(): void {
+        $registry=$this->plugin->get('integrations');$statuses=$registry->statuses();$square_status=defined('WC_SQUARE_PLUGIN_VERSION')?'Active '.WC_SQUARE_PLUGIN_VERSION:'Not detected';if(defined('WC_SQUARE_PLUGIN_VERSION')&&function_exists('wc_square')){try{$h=wc_square()->get_settings_handler();if($h&&method_exists($h,'is_system_of_record_square'))$square_status.=$h->is_system_of_record_square()?' · Square authoritative':' · WooCommerce authoritative';}catch(\Throwable$e){$this->plugin->get('logger')->warning('Could not read WooCommerce Square system-of-record setting.',array('code'=>'kitgenix_multistore_sync_for_woocommerce_square_status_exception','error'=>$e->getMessage()));}}
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('link').'</span><div class="kitgenix-card-head-text"><h2>Integration status</h2><p><strong>Integrated</strong> means Kitgenix has an active adapter; detected alone never implies compatibility.</p></div></div></div></div>';
+        echo '<div class="kitgenix-stat-grid">';
+        echo $this->integration('WooCommerce',defined('WC_VERSION')?'Integrated · '.WC_VERSION:'Missing',defined('WC_VERSION'));
+        echo $this->integration('WooCommerce Square',$square_status.' · Integrated',defined('WC_SQUARE_PLUGIN_VERSION'));
+        foreach($statuses as$name=>$row){
+            if('WooCommerce Square'===$name)continue;
+            $state=!empty($row['detected'])?'Detected':'Not detected';$state.=' · '.(!empty($row['integrated'])?'Integrated':'No adapter');if(!empty($row['note']))$state.=' · '.$row['note'];
+            echo $this->integration($name,$state,!empty($row['integrated']));
+        }
+        echo '</div>';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Generic compatibility layer</h2></div></div></div><div class="kitgenix-card-body"><p>Configured product meta keys and taxonomies are synchronised through the same signed product payload and can be used for extensions without a dedicated adapter.</p></div></div>';
+    }
+
+    private function view_doctor():void{
+        $network=$this->plugin->get('doctor')->network_checks();
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('doctor').'</span><div class="kitgenix-card-head-text"><h2>Network Doctor</h2><p>Checks the local runtime and every paired store without changing commerce data.</p></div></div><div class="kitgenix-card-head-actions"><span class="kitgenix-stat-tile-value">'.esc_html((string)$this->plugin->get('doctor')->score($network['local'])).'</span><span class="kitgenix-setting-row-desc" style="margin:0">/100 local</span></div></div><div class="kitgenix-card-body">'.$this->checks_table($network['local']).'</div></div>';
+        foreach($network['stores']as$uuid=>$checks){
+            echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('store').'</span><div class="kitgenix-card-head-text"><h2>Store <code>'.esc_html(substr($uuid,0,8)).'…</code></h2></div></div></div><div class="kitgenix-card-body">';
+            if(isset($checks['error']))echo '<div class="kitgenix-notice kitgenix-notice-error" role="alert"><span class="kitgenix-notice-icon" aria-hidden="true">'.$this->icon('warn').'</span><div class="kitgenix-notice-body"><p class="kitgenix-notice-text">'.esc_html($checks['error']).'</p></div></div>';
+            else echo $this->checks_table($checks);
+            echo '</div></div>';
+        }
+    }
+
+    private function view_migration():void{
+        $importer=new WooMultistoreImporter($this->plugin->get('mappings'),$this->plugin->get('logger'));$d=$importer->detect();
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('download').'</span><div class="kitgenix-card-head-text"><h2>WooMultistore migration</h2></div></div></div><div class="kitgenix-card-body">';
+        echo '<div class="kitgenix-notice kitgenix-notice-'.($d['detected']?'info':'neutral').'" role="status"><span class="kitgenix-notice-icon" aria-hidden="true">'.$this->icon($d['detected']?'success':'warn').'</span><div class="kitgenix-notice-body"><p class="kitgenix-notice-text">'.($d['detected']?'Existing <code>_woonet_*</code> metadata was detected.':'No WooMultistore metadata was detected.').'</p></div></div>';
+        echo '<p>Detected local objects: <strong>'.esc_html((string)$d['products']).'</strong></p>';
+        if($d['detected']){
+            echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_migrate_woomultistore">';
+            wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_migrate_woomultistore');
+            echo '<div class="kitgenix-button-group">';submit_button('Import relationships','primary','submit',false);echo '</div></form>';
+        }
+        echo '</div></div>';
+    }
+
+    private function view_logs():void{
+        global$wpdb;$rows=$wpdb->get_results("SELECT * FROM {$wpdb->prefix}kitgenix_multistore_sync_for_woocommerce_logs ORDER BY id DESC LIMIT 200",ARRAY_A)?:array();
+        $level_badge=static function(string$level):string{$level=strtolower($level);if(in_array($level,array('error','critical'),true))return'danger';if($level==='warning')return'warning';if($level==='info')return'info';return'neutral';};
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div><h2 class="kitgenix-support-subheading">'.esc_html__('Activity Log','kitgenix-multistore').'</h2><p class="description">'.esc_html__('A record of recent network sync events, newest first.','kitgenix-multistore').'</p></div></div><div class="kitgenix-card-body">';
+        if($rows){
+            echo '<div class="kitgenix-search-bar"><div class="kitgenix-search-bar-input"><span class="kitgenix-search-bar-icon" aria-hidden="true">'.$this->icon('search').'</span><input type="search" placeholder="'.esc_attr__('Search log…','kitgenix-multistore').'" data-kitgenix-table-search data-kitgenix-table-search-target="#kitgenix-multistore-sync-for-woocommerce-log-table" /></div></div>';
+            echo '<div class="kitgenix-table-wrap" id="kitgenix-multistore-sync-for-woocommerce-log-table" data-kitgenix-table-paginate="25"><table class="kitgenix-table"><thead><tr><th>'.esc_html__('Time','kitgenix-multistore').'</th><th>'.esc_html__('Level','kitgenix-multistore').'</th><th>'.esc_html__('Category','kitgenix-multistore').'</th><th>'.esc_html__('Message','kitgenix-multistore').'</th><th>'.esc_html__('Context','kitgenix-multistore').'</th></tr></thead><tbody>';
+            foreach($rows as$r){
+                $context=json_decode((string)$r['context'],true);$code=is_array($context)&&!empty($context['code'])?(string)$context['code']:'';
+                $category_note=ErrorCatalog::get_category_and_note($code);
+                $category_cell=''!==$code?'<span class="kitgenix-badge '.(ErrorCatalog::is_recoverable($code)?'warning':($category_note['category']==='unmapped'?'neutral':'danger')).'" title="'.esc_attr($category_note['note']).'">'.esc_html($category_note['category']).'</span>':'—';
+                echo '<tr data-kitgenix-table-row><td>'.esc_html($r['created_at']).'</td><td><span class="kitgenix-badge '.esc_attr($level_badge((string)$r['level'])).'">'.esc_html($r['level']).'</span></td><td>'.$category_cell.'</td><td>'.esc_html($r['message']).'</td><td><code>'.esc_html(wp_html_excerpt((string)$r['context'],180,'…')).'</code></td></tr>';
+            }
+            echo '</tbody></table><div class="kitgenix-empty-state" data-kitgenix-table-empty style="display:none;"><p class="kitgenix-empty-state-title">'.esc_html__('No matching log entries','kitgenix-multistore').'</p></div></div>';
+        } else {
+            echo '<div class="kitgenix-empty-state"><span class="kitgenix-empty-state-icon" aria-hidden="true">'.$this->icon('logs').'</span><h3 class="kitgenix-empty-state-title">'.esc_html__('No log entries yet','kitgenix-multistore').'</h3><p class="kitgenix-empty-state-desc">'.esc_html__('Sync activity will appear here as it happens.','kitgenix-multistore').'</p></div>';
+        }
+        echo '</div></div>';
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div><h2 class="kitgenix-support-subheading">'.esc_html__('What the categories mean','kitgenix-multistore').'</h2><p class="description">'.esc_html__('Recoverable categories are usually not a problem — they explain themselves and clear up on their own. Everything else is worth a look.','kitgenix-multistore').'</p></div></div><div class="kitgenix-card-body"><div class="kitgenix-table-wrap"><table class="kitgenix-table"><thead><tr><th>'.esc_html__('Category','kitgenix-multistore').'</th><th>'.esc_html__('What it means','kitgenix-multistore').'</th><th>'.esc_html__('Action needed?','kitgenix-multistore').'</th></tr></thead><tbody>';
+        foreach(ErrorCatalog::category_reference()as$row){
+            echo '<tr><td><code>'.esc_html($row['category']).'</code></td><td>'.esc_html($row['meaning']).'</td><td>'.esc_html($row['action']).'</td></tr>';
+        }
+        echo '</tbody></table></div></div></div>';
+    }
+
+    private function view_settings(): void {
+        $s=$this->plugin->get('settings');$a=$s->all();
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="kitgenix_multistore_sync_for_woocommerce_save_settings">';
+        wp_nonce_field('kitgenix_multistore_sync_for_woocommerce_save_settings');
+
+        if(is_multisite()){
+            echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('store').'</span><div class="kitgenix-card-head-text"><h2>Network mode</h2></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+            echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_network_mode">Network mode</label><p class="kitgenix-setting-row-desc">Native Multisite discovers sites automatically and shares connection credentials; paired mode works across separate WordPress installations.</p></div><div class="kitgenix-setting-row-control"><select id="kitgenix_field_network_mode" name="network_mode"><option value="paired" '.selected($a['network_mode'],'paired',false).'>Paired stores</option><option value="native_multisite" '.selected($a['network_mode'],'native_multisite',false).'>Native WordPress Multisite</option></select></div></div>';
+            echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_native_control_blog_id">Native control site</label><p class="kitgenix-setting-row-desc">The authoritative site when Native Multisite mode is enabled.</p></div><div class="kitgenix-setting-row-control"><select id="kitgenix_field_native_control_blog_id" name="native_control_blog_id">';
+            foreach(get_sites(array('number'=>0))as$site){switch_to_blog((int)$site->blog_id);$name=get_bloginfo('name');restore_current_blog();echo '<option value="'.esc_attr((string)$site->blog_id).'" '.selected((int)$a['native_control_blog_id'],(int)$site->blog_id,false).'>'.esc_html($name.' (#'.$site->blog_id.')').'</option>';}
+            echo '</select></div></div></div></div></div>';
+        }
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('store').'</span><div class="kitgenix-card-head-text"><h2>Network role</h2></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_role">Network role</label><p class="kitgenix-setting-row-desc">Use one control store and any number of connected stores.</p></div><div class="kitgenix-setting-row-control"><select id="kitgenix_field_role" name="role"><option value="control" '.selected($a['role'],'control',false).'>Control store</option><option value="connected" '.selected($a['role'],'connected',false).'>Connected store</option></select></div></div>';
+        echo '</div></div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Synchronisation</h2><p>Choose which data types are kept in sync across the network.</p></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+        $this->toggle('sync_products','Product synchronisation','Synchronise product content and merchandising data.',$a);
+        $this->toggle('sync_inventory','Inventory synchronisation','Use revisioned stock events and automatic reconciliation.',$a);
+        $this->toggle('sync_orders','Order synchronisation','Index orders in the Control Store.',$a);
+        $this->toggle('sync_coupons','Coupon synchronisation','Control-store coupons sync to connected stores.',$a);
+        $this->toggle('sync_customers','Customer synchronisation','Off by default; sends customer snapshots to Control.',$a);
+        $this->toggle('sync_images','Image synchronisation','Synchronise featured/gallery/variation/category media and ALT data.',$a);
+        $this->toggle('sync_reviews','Product review synchronisation','Synchronise actual WooCommerce reviews and ratings.',$a);
+        $this->toggle('sync_rest_products','Synchronise REST/API product writes','Enable products created or updated through REST/import integrations to enter the sync queue.',$a);
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_review_direction">Review direction</label><p class="kitgenix-setting-row-desc">Network mode accepts reviews from connected stores and redistributes them; Control-only publishes Control reviews outward.</p></div><div class="kitgenix-setting-row-control"><select id="kitgenix_field_review_direction" name="review_direction"><option value="network" '.selected($a['review_direction'],'network',false).'>Network reviews</option><option value="control_only" '.selected($a['review_direction'],'control_only',false).'>Control → connected only</option></select></div></div>';
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_media_mode">Media mode</label><p class="kitgenix-setting-row-desc">Local copy is safest. Shared Network Media creates lightweight local attachment records that reference the authoritative remote image URL.</p></div><div class="kitgenix-setting-row-control"><select id="kitgenix_field_media_mode" name="media_mode"><option value="local_copy" '.selected($a['media_mode'],'local_copy',false).'>Local copy (recommended)</option><option value="shared_remote" '.selected($a['media_mode'],'shared_remote',false).'>Shared Network Media</option></select></div></div>';
+        echo '</div></div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('box').'</span><div class="kitgenix-card-head-text"><h2>Product &amp; catalog behaviour</h2></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+        $this->toggle('sku_assisted_linking','SKU-assisted linking','If a destination already has the same SKU, adopt it into the network UUID mapping instead of creating a duplicate.',$a);
+        $this->toggle('auto_publish_new_products','Auto-publish new products','When off, incoming published products are created as drafts.',$a);
+        $this->toggle('checkout_inventory_validation','Checkout inventory validation','Connected stores validate against authoritative inventory.',$a);
+        $this->toggle('inventory_fail_closed','Fail checkout closed on validation errors','Block checkout if Control cannot validate inventory.',$a);
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_product_direction">Product direction</label><p class="kitgenix-setting-row-desc">Control-only is safer; bidirectional accepts connected-store product writes upstream.</p></div><div class="kitgenix-setting-row-control"><select id="kitgenix_field_product_direction" name="product_direction"><option value="control_only" '.selected($a['product_direction'],'control_only',false).'>Control authoritative</option><option value="bidirectional" '.selected($a['product_direction'],'bidirectional',false).'>Bidirectional</option></select></div></div>';
+        echo '</div></div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('users').'</span><div class="kitgenix-card-head-text"><h2>Orders</h2></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_order_import_mode">Central order storage</label><p class="kitgenix-setting-row-desc">Snapshots avoid duplicates. Optional WooCommerce import creates tagged Control-Store orders without stock reduction/emails.</p></div><div class="kitgenix-setting-row-control"><select id="kitgenix_field_order_import_mode" name="order_import_mode"><option value="snapshot" '.selected($a['order_import_mode'],'snapshot',false).'>Network snapshots (recommended)</option><option value="woocommerce" '.selected($a['order_import_mode'],'woocommerce',false).'>Import as WooCommerce orders</option></select></div></div>';
+        $this->toggle('clone_products_on_order_import','Clone missing order products','When importing a remote order, create hidden draft placeholders for missing SKUs.',$a);
+        $this->toggle('network_my_account_orders','Show network orders in My Account','Customers can see read-only orders from other indexed stores when their email matches.',$a);
+        $this->toggle('sequential_order_numbers','Network sequential order numbers','Allocate display order numbers centrally across stores.',$a);
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_order_number_prefix">Order number prefix / start</label><p class="kitgenix-setting-row-desc">Applied only to new numbers after the feature is enabled.</p></div><div class="kitgenix-setting-row-control"><span style="display:flex;gap:8px;align-items:center;width:100%"><input type="text" id="kitgenix_field_order_number_prefix" name="order_number_prefix" value="'.esc_attr((string)$a['order_number_prefix']).'" placeholder="KITGENIX-"><input type="number" min="1" name="order_number_start" value="'.esc_attr((string)$a['order_number_start']).'"></span></div></div>';
+        echo '</div></div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('gear').'</span><div class="kitgenix-card-head-text"><h2>Custom fields</h2><p>Only explicitly listed keys are synchronised.</p></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+        echo '<div class="kitgenix-setting-row kitgenix-setting-row-stacked"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_custom_meta_keys">Custom product metadata</label><p class="kitgenix-setting-row-desc">One meta key per line or comma separated.</p></div><div class="kitgenix-setting-row-control"><textarea id="kitgenix_field_custom_meta_keys" name="custom_meta_keys" rows="5">'.esc_textarea(implode("\n",$s->custom_meta_keys())).'</textarea></div></div>';
+        echo '<div class="kitgenix-setting-row kitgenix-setting-row-stacked"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_custom_taxonomies">Custom product taxonomies</label><p class="kitgenix-setting-row-desc">One registered taxonomy slug per line or comma separated. The taxonomy must be registered on every destination store.</p></div><div class="kitgenix-setting-row-control"><textarea id="kitgenix_field_custom_taxonomies" name="custom_taxonomies" rows="5">'.esc_textarea(implode("\n",$s->custom_taxonomies())).'</textarea></div></div>';
+        echo '<div class="kitgenix-setting-row kitgenix-setting-row-stacked"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_term_meta_keys">Term metadata</label><p class="kitgenix-setting-row-desc">Optional taxonomy term meta keys to copy with categories, attributes and configured custom taxonomies.</p></div><div class="kitgenix-setting-row-control"><textarea id="kitgenix_field_term_meta_keys" name="term_meta_keys" rows="4">'.esc_textarea(implode("\n",$s->term_meta_keys())).'</textarea></div></div>';
+        echo '</div></div></div>';
+
+        $roles=wp_roles()->roles;
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('users').'</span><div class="kitgenix-card-head-text"><h2>Permissions &amp; safety</h2></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label>MultiStore permissions</label><p class="kitgenix-setting-row-desc">Select roles that can manage the network. Administrators always retain access.</p></div><div class="kitgenix-setting-row-control"><span class="kitgenix-multistore-sync-for-woocommerce-checklist">';
+        foreach($roles as$key=>$role)echo '<label><input type="checkbox" name="allowed_roles[]" value="'.esc_attr($key).'" '.checked(in_array($key,$s->allowed_roles(),true),true,false).' '.disabled($key,'administrator',false).'> '.esc_html($role['name']).'</label>';
+        echo '</span></div></div>';
+        $this->toggle('allow_non_production_outbound','Allow staging outbound writes','Keep off unless intentionally testing a staging/local network.',$a);
+        $this->toggle('allow_remote_gateway_refunds','Allow remote gateway refunds','Off by default because this can invoke a real payment gateway.',$a);
+        echo '</div></div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('clock').'</span><div class="kitgenix-card-head-text"><h2>Reliability</h2></div></div></div><div class="kitgenix-card-body"><div class="kitgenix-settings-group">';
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_max_retries">Maximum retries</label><p class="kitgenix-setting-row-desc">Failed deliveries use exponential backoff.</p></div><div class="kitgenix-setting-row-control"><input type="number" min="1" max="20" id="kitgenix_field_max_retries" name="max_retries" value="'.esc_attr((string)$a['max_retries']).'"></div></div>';
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_request_timeout">Request timeout</label><p class="kitgenix-setting-row-desc">Seconds for signed store-to-store requests.</p></div><div class="kitgenix-setting-row-control"><input type="number" min="5" max="60" id="kitgenix_field_request_timeout" name="request_timeout" value="'.esc_attr((string)$a['request_timeout']).'"></div></div>';
+        echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_log_retention_days">Log retention</label><p class="kitgenix-setting-row-desc">Days to keep technical logs.</p></div><div class="kitgenix-setting-row-control"><input type="number" min="1" max="365" id="kitgenix_field_log_retention_days" name="log_retention_days" value="'.esc_attr((string)$a['log_retention_days']).'"></div></div>';
+        echo '</div></div></div>';
+
+        echo '<div class="kitgenix-button-group kitgenix-button-group-end">';
+        submit_button('Save settings');
+        echo '</div></form>';
+        echo '<p><a href="'.esc_url(admin_url('admin.php?page=kitgenix-multistore&view=migration')).'">WooMultistore migration tools</a> · <a href="'.esc_url(admin_url('admin.php?page=kitgenix-multistore&view=logs')).'">Technical logs</a></p>';
+    }
+
+    public function save_settings(): void {
+        $this->guard('kitgenix_multistore_sync_for_woocommerce_save_settings');$role=sanitize_key($_POST['role']??'control');if(!in_array($role,array('control','connected'),true))$role='control';$dir=sanitize_key($_POST['product_direction']??'control_only');if(!in_array($dir,array('control_only','bidirectional'),true))$dir='control_only';$network_mode=sanitize_key($_POST['network_mode']??'paired');if(!in_array($network_mode,array('paired','native_multisite'),true))$network_mode='paired';$media=sanitize_key($_POST['media_mode']??'local_copy');if(!in_array($media,array('local_copy','shared_remote'),true))$media='local_copy';$reviews=sanitize_key($_POST['review_direction']??'network');if(!in_array($reviews,array('network','control_only'),true))$reviews='network';$order_mode=sanitize_key($_POST['order_import_mode']??'snapshot');if(!in_array($order_mode,array('snapshot','woocommerce'),true))$order_mode='snapshot';
+        $parse_list=static function($raw):array{$parts=preg_split('/[\r\n,]+/',wp_unslash((string)$raw))?:array();return array_values(array_unique(array_filter(array_map('sanitize_key',$parts))));};
+        $roles=array_values(array_filter(array_map('sanitize_key',(array)($_POST['allowed_roles']??array()))));if(!in_array('administrator',$roles,true))$roles[]='administrator';
+        $values=array('role'=>$role,'network_mode'=>$network_mode,'native_control_blog_id'=>absint($_POST['native_control_blog_id']??0),'product_direction'=>$dir,'media_mode'=>$media,'review_direction'=>$reviews,'order_import_mode'=>$order_mode,'order_number_prefix'=>sanitize_text_field(wp_unslash($_POST['order_number_prefix']??'')),'order_number_start'=>max(1,(int)($_POST['order_number_start']??1000)),'custom_meta_keys'=>$parse_list($_POST['custom_meta_keys']??''),'custom_taxonomies'=>$parse_list($_POST['custom_taxonomies']??''),'term_meta_keys'=>$parse_list($_POST['term_meta_keys']??''),'allowed_roles'=>$roles,'max_retries'=>max(1,min(20,(int)($_POST['max_retries']??8))),'request_timeout'=>max(5,min(60,(int)($_POST['request_timeout']??20))),'log_retention_days'=>max(1,min(365,(int)($_POST['log_retention_days']??30))));
+        foreach(array('sync_products','sync_inventory','sync_orders','sync_coupons','sync_customers','sync_images','sync_reviews','sync_rest_products','sku_assisted_linking','auto_publish_new_products','checkout_inventory_validation','inventory_fail_closed','allow_non_production_outbound','allow_remote_gateway_refunds','clone_products_on_order_import','network_my_account_orders','sequential_order_numbers')as$k)$values[$k]=isset($_POST[$k])?'yes':'no';
+        $this->plugin->get('settings')->set($values);if(is_multisite()){if('native_multisite'===$network_mode)NativeNetwork::enable($values['native_control_blog_id']?:get_main_site_id());else NativeNetwork::disable();}$this->plugin->get('access')->sync_roles();$this->redirect('settings','Settings saved.');
+    }
+
+    private function view_support():void{
+        $donate_once_url='https://buymeacoffee.com/kitgenix';$monthly_support_url='https://buymeacoffee.com/kitgenix/membership';
+        $plugin_page_url='https://kitgenix.com/plugins/kitgenix-multistore-sync-for-woocommerce/';
+        $docs_url='https://kitgenix.com/plugins/kitgenix-multistore-sync-for-woocommerce/documentation/';
+        $support_request_url='https://kitgenix.com/plugins/kitgenix-multistore-sync-for-woocommerce/support';
+        $review_url='https://wordpress.org/support/plugin/kitgenix-multistore-sync-for-woocommerce/reviews/#new-post';
+        $facebook_url='https://www.facebook.com/groups/kitgenix';
+        $social_base=KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL.'assets/images/social-media/';
+        $copy_onclick="if(window.navigator&&navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(".wp_json_encode($plugin_page_url).");}else{window.prompt(".wp_json_encode(__('Copy plugin link:','kitgenix-multistore')).", ".wp_json_encode($plugin_page_url).");}return false;";
+        $monthly_options=array(
+            array('label'=>__('Kitgenix Supporter (£4/month)','kitgenix-multistore'),'url'=>$monthly_support_url),
+            array('label'=>__('Kitgenix Plus (£8/month)','kitgenix-multistore'),'url'=>$monthly_support_url),
+            array('label'=>__('Kitgenix Pro Supporter (£19/month)','kitgenix-multistore'),'url'=>$monthly_support_url),
+            array('label'=>__('Kitgenix Agency (£37/month)','kitgenix-multistore'),'url'=>$monthly_support_url),
+            array('label'=>__('Kitgenix Partner (£75/month)','kitgenix-multistore'),'url'=>$monthly_support_url),
+            array('label'=>__('Kitgenix YouTube Sponsor (£730/month)','kitgenix-multistore'),'url'=>$monthly_support_url),
+        );
+        $funded_points=array(
+            array('icon'=>'sync','label'=>__('Compatibility & bug fixes','kitgenix-multistore')),
+            array('icon'=>'tools','label'=>__('Security hardening','kitgenix-multistore')),
+            array('icon'=>'check','label'=>__('No paid features locked','kitgenix-multistore')),
+            array('icon'=>'logs','label'=>__('Docs & faster support','kitgenix-multistore')),
+        );
+        $social_links=array(
+            array('label'=>'Website','icon'=>'globe-solid.svg','url'=>'https://kitgenix.com'),
+            array('label'=>'Facebook','icon'=>'facebook-solid.svg','url'=>'https://www.facebook.com/kitgenix'),
+            array('label'=>'Instagram','icon'=>'instagram-solid.svg','url'=>'https://www.instagram.com/kitgenix/'),
+            array('label'=>'YouTube','icon'=>'youtube-solid.svg','url'=>'https://www.youtube.com/@Kitgenix'),
+            array('label'=>'Reddit','icon'=>'reddit-solid.svg','url'=>'https://www.reddit.com/r/Kitgenix/'),
+            array('label'=>'LinkedIn','icon'=>'linkedin-solid.svg','url'=>'https://www.linkedin.com/company/kitgenix'),
+            array('label'=>'X','icon'=>'x-solid.svg','url'=>'https://x.com/kitgenix'),
+            array('label'=>'TikTok','icon'=>'tiktok-solid.svg','url'=>'https://www.tiktok.com/@kitgenix'),
+            array('label'=>'GitHub','icon'=>'github-solid.svg','url'=>'https://github.com/kitgenix'),
+        );
+
+        echo '<div class="kitgenix-card kitgenix-support-hero"><div class="kitgenix-card-head"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('heart').'</span><div class="kitgenix-card-head-text"><span class="kitgenix-badge brand">'.esc_html__('Independent & privacy-friendly','kitgenix-multistore').'</span><h2>'.esc_html__('Support Kitgenix Multistore Sync','kitgenix-multistore').'</h2></div></div></div><div class="kitgenix-card-body">';
+        echo '<p>'.esc_html__('Kitgenix Multistore Sync keeps products, inventory, orders, customers and coupons consistent across every connected store in your hub-and-spoke network, with signed deliveries and nothing paywalled. A donation helps keep it maintained and improving.','kitgenix-multistore').'</p>';
+        echo '<div class="kitgenix-button-group"><a class="button button-primary" href="'.esc_url($donate_once_url).'" target="_blank" rel="noopener noreferrer">'.esc_html__('Donate once','kitgenix-multistore').'</a> <a class="button button-secondary" href="'.esc_url($monthly_support_url).'" target="_blank" rel="noopener noreferrer">'.esc_html__('Support monthly','kitgenix-multistore').'</a></div>';
+        echo '<details class="kitgenix-support-amounts"><summary>'.esc_html__('Choose a monthly amount','kitgenix-multistore').'</summary><div class="kitgenix-button-group">';
+        foreach($monthly_options as$opt)echo '<a class="button" href="'.esc_url($opt['url']).'" target="_blank" rel="noopener noreferrer">'.esc_html($opt['label']).'</a>';
+        echo '</div></details>';
+        echo '<p class="kitgenix-setting-row-desc">'.esc_html__('Secure checkout via Buy Me a Coffee. Cancel anytime.','kitgenix-multistore').'</p>';
+        echo '</div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-text"><h3>'.esc_html__('What your support funds','kitgenix-multistore').'</h3></div></div><div class="kitgenix-card-body"><div class="kitgenix-chip-grid">';
+        foreach($funded_points as$point)echo '<span class="kitgenix-chip">'.$this->icon($point['icon']).esc_html($point['label']).'</span>';
+        echo '</div></div></div>';
+
+        echo '<div class="kitgenix-card"><div class="kitgenix-card-head"><div class="kitgenix-card-head-text"><h3>'.esc_html__('Get involved','kitgenix-multistore').'</h3><p>'.esc_html__("Can't donate right now? These help just as much.",'kitgenix-multistore').'</p></div></div><div class="kitgenix-card-body">';
+        echo '<div class="kitgenix-action-grid">';
+        echo '<a class="kitgenix-action-tile" href="'.esc_url($docs_url).'" target="_blank" rel="noopener noreferrer"><span class="kitgenix-action-tile-icon" aria-hidden="true">'.$this->icon('audit').'</span>'.esc_html__('Documentation','kitgenix-multistore').'</a>';
+        echo '<a class="kitgenix-action-tile" href="'.esc_url($support_request_url).'" target="_blank" rel="noopener noreferrer"><span class="kitgenix-action-tile-icon" aria-hidden="true">'.$this->icon('chat').'</span>'.esc_html__('Request support','kitgenix-multistore').'</a>';
+        echo '<a class="kitgenix-action-tile" href="'.esc_url($review_url).'" target="_blank" rel="noopener noreferrer"><span class="kitgenix-action-tile-icon" aria-hidden="true">'.$this->icon('star').'</span>'.esc_html__('Leave a review','kitgenix-multistore').'</a>';
+        echo '<button type="button" class="kitgenix-action-tile" onclick="'.esc_attr($copy_onclick).'"><span class="kitgenix-action-tile-icon" aria-hidden="true">'.$this->icon('copy').'</span>'.esc_html__('Copy plugin link','kitgenix-multistore').'</button>';
+        echo '<a class="kitgenix-action-tile" href="'.esc_url($facebook_url).'" target="_blank" rel="noopener noreferrer"><span class="kitgenix-action-tile-icon" aria-hidden="true">'.$this->icon('users').'</span>'.esc_html__('Join Facebook group','kitgenix-multistore').'</a>';
+        echo '</div>';
+        echo '<div class="kitgenix-sidebar-social-grid">';
+        foreach($social_links as$s)echo '<a class="kitgenix-sidebar-social-link" href="'.esc_url($s['url']).'" target="_blank" rel="noopener noreferrer" aria-label="'.esc_attr($s['label']).'" title="'.esc_attr($s['label']).'"><img src="'.esc_url($social_base.$s['icon']).'" alt="" width="16" height="16" aria-hidden="true" /></a>';
+        echo '</div>';
+        echo '</div></div>';
+    }
+
+    public function generate_pair():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_generate_pair');$code=strtoupper(wp_generate_password(8,false,false));set_transient('kitgenix_multistore_sync_for_woocommerce_pair_code',$code,10*MINUTE_IN_SECONDS);wp_safe_redirect(admin_url('admin.php?page=kitgenix-multistore&view=stores&pair_code='.rawurlencode($code)));exit;}
+    public function connect_store():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_connect_store');$r=$this->plugin->get('client')->pair(esc_url_raw(wp_unslash($_POST['store_url']??'')),sanitize_text_field(wp_unslash($_POST['pair_code']??'')));$this->redirect('stores',is_wp_error($r)?'Connection failed: '.$r->get_error_message():'Store connected successfully.');}
+    public function delete_store():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_delete_store');$uuid=sanitize_text_field($_GET['uuid']??'');$this->plugin->get('stores')->delete($uuid);$settings=$this->plugin->get('settings');$rules=$settings->pricing_rules();unset($rules[$uuid]);$settings->save_pricing_rules($rules);$policies=$settings->policies();unset($policies[$uuid]);$settings->save_policies($policies);$groups=$settings->groups();foreach($groups as&$group)$group['stores']=array_values(array_diff((array)$group['stores'],array($uuid)));unset($group);$settings->save_groups($groups);$this->redirect('stores','Store disconnected.');}
+    public function sync_product():void{$id=(int)($_GET['product_id']??0);if(!current_user_can('edit_post',$id)||!wp_verify_nonce(sanitize_text_field($_GET['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_sync_product_'.$id))wp_die('Invalid request.');$r=$this->plugin->get('product_sync')->sync_now($id);$this->redirect('products',is_wp_error($r)?$r->get_error_message():'Product queued for synchronisation.');}
+    public function sync_all_products():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_sync_all_products');$count=$this->plugin->get('product_sync')->schedule_all();$this->redirect('products',sprintf('%d products queued for synchronisation.',$count));}
+    public function reconcile():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_reconcile');$r=$this->plugin->get('reconciler')->run();$this->redirect('inventory',sprintf('Reconciliation checked %d records, found %d drift and queued %d repairs.',$r['checked'],$r['drift'],$r['repaired']));}
+    public function create_automation():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_create_automation');$trigger=sanitize_key($_POST['trigger']??'stock_below');if(!in_array($trigger,array('stock_below','stock_above'),true))$trigger='stock_below';$status=sanitize_key($_POST['status']??'draft');if(!in_array($status,array('draft','publish','private'),true))$status='draft';$this->plugin->get('automations')->create(sanitize_text_field(wp_unslash($_POST['name']??'Inventory rule')),$trigger,array('threshold'=>(float)($_POST['threshold']??1)),'set_product_status',array('status'=>$status));$this->redirect('automations','Automation created.');}
+    public function delete_automation():void{$id=(int)($_GET['id']??0);if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_GET['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_delete_automation_'.$id))wp_die('Invalid request.');$this->plugin->get('automations')->delete($id);$this->redirect('automations','Automation deleted.');}
+    public function remote_order_status():void{$network=sanitize_text_field(wp_unslash($_POST['network_id']??''));if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_POST['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_remote_order_status_'.$network))wp_die('Invalid request.');$r=$this->plugin->get('order_sync')->update_remote_status($network,sanitize_key($_POST['status']??''));$this->redirect('orders',is_wp_error($r)?$r->get_error_message():'Remote order status updated.');}
+    public function migrate_woomultistore():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_migrate_woomultistore');$i=new WooMultistoreImporter($this->plugin->get('mappings'),$this->plugin->get('logger'));$r=$i->import();$this->redirect('migration',sprintf('Imported %d products and %d variations.',$r['products'],$r['variations']));}
+    public function index_orders():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_index_orders');$count=$this->plugin->get('order_sync')->schedule_backfill(90);$this->redirect('orders',sprintf('%d orders queued for indexing.',$count));}
+    public function remote_order_note():void{$network=sanitize_text_field(wp_unslash($_POST['network_id']??''));if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_POST['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_remote_order_note_'.$network))wp_die('Invalid request.');$r=$this->plugin->get('order_sync')->update_remote_note($network,(string)wp_unslash($_POST['note']??''),!empty($_POST['customer_note']));$this->redirect('orders',is_wp_error($r)?$r->get_error_message():'Order note added on originating store.');}
+    public function remote_order_refund():void{$network=sanitize_text_field(wp_unslash($_POST['network_id']??''));if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_POST['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_remote_order_refund_'.$network))wp_die('Invalid request.');$r=$this->plugin->get('order_sync')->update_remote_refund($network,(string)wp_unslash($_POST['amount']??''),(string)wp_unslash($_POST['reason']??''),!empty($_POST['refund_payment']),false,array());$this->redirect('orders',is_wp_error($r)?$r->get_error_message():'Refund created on originating store.');}
+    public function resolve_conflict():void{$uuid=sanitize_text_field($_GET['uuid']??'');if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_GET['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_resolve_conflict_'.$uuid))wp_die('Invalid request.');$this->plugin->get('conflicts')->resolve($uuid);$this->redirect('sync','Conflict marked as resolved.');}
+    public function save_store_pricing_rules():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_save_store_pricing_rules');if(!$this->plugin->get('settings')->is_control())$this->redirect('stores','Pricing rules can only be managed from the Control Store.');$active=array();foreach($this->plugin->get('stores')->all()as$store){if('connected'===($store['role']??''))$active[(string)$store['uuid']]=true;}$enabled=(array)($_POST['pricing_enabled']??array());$percentages=(array)($_POST['pricing_percentage']??array());$rules=array();foreach($active as$uuid=>$_){$raw=isset($percentages[$uuid])?wp_unslash((string)$percentages[$uuid]):'0';$percentage=is_numeric($raw)?(float)$raw:0.0;$rules[$uuid]=array('enabled'=>isset($enabled[$uuid])?'yes':'no','percentage'=>max(-100.0,min(1000.0,$percentage)));}$this->plugin->get('settings')->save_pricing_rules($rules);$count=0;if(!empty($_POST['resync_products']))$count=$this->plugin->get('product_sync')->schedule_all();$message='Store pricing rules saved.';if($count)$message.=' '.$count.' products queued for synchronisation.';$this->redirect('stores',$message);}
+    public function save_store_policies(): void {$this->guard('kitgenix_multistore_sync_for_woocommerce_save_store_policies');if(!$this->plugin->get('settings')->is_control())$this->redirect('stores','Policies can only be managed on the Control Store.');$input=(array)($_POST['policy']??array());$policies=array();foreach($this->plugin->get('stores')->all()as$st){if('connected'!==($st['role']??''))continue;$uuid=(string)$st['uuid'];$fields=array();foreach(Settings::policy_fields()as$key=>$_label){$fields[$key]=array('publish'=>isset($input[$uuid][$key]['publish'])?'yes':'no','update'=>isset($input[$uuid][$key]['update'])?'yes':'no');}$policies[$uuid]=array('fields'=>$fields);}$this->plugin->get('settings')->save_policies($policies);$count=!empty($_POST['resync_products'])?$this->plugin->get('product_sync')->schedule_all():0;$this->redirect('stores','Store policies saved.'.($count?' '.$count.' products queued.':''));}
+    public function toggle_store(): void {$uuid=sanitize_text_field($_GET['uuid']??'');$status=sanitize_key($_GET['status']??'disabled');if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_GET['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_toggle_store_'.$uuid))wp_die('Invalid request.');$status='disabled'===$status?'disabled':'active';$this->plugin->get('stores')->set_status($uuid,$status);$resumed='active'===$status?$this->plugin->get('queue')->resume_store($uuid):0;$this->redirect('stores','Store '.('disabled'===$status?'paused.':'resumed.'.($resumed?' '.$resumed.' paused deliveries requeued.':'')));}
+    public function export_orders(): void {if(!Access::can_manage()||!check_admin_referer('kitgenix_multistore_sync_for_woocommerce_export_orders'))wp_die('Invalid request.');$args=array('search'=>sanitize_text_field(wp_unslash($_GET['s']??'')),'status'=>sanitize_key($_GET['status']??''),'store_uuid'=>sanitize_text_field($_GET['store_uuid']??''));$this->plugin->get('order_exporter')->download($args,sanitize_key($_GET['format']??'csv'));}
+    public function bulk_order_status(): void {$this->guard('kitgenix_multistore_sync_for_woocommerce_bulk_order_status');$status=sanitize_key($_POST['status']??'');$ids=array_values(array_unique(array_filter(array_map('sanitize_text_field',(array)($_POST['network_ids']??array())))));$ok=0;$failed=0;foreach(array_slice($ids,0,250)as$network){$r=$this->plugin->get('order_sync')->update_remote_status($network,$status);is_wp_error($r)?$failed++:$ok++;}$this->redirect('orders',$ok.' orders updated'.($failed?' · '.$failed.' failed.':'.'));}
+    public function create_store_group():void{$this->guard('kitgenix_multistore_sync_for_woocommerce_create_store_group');$name=sanitize_text_field(wp_unslash($_POST['group_name']??''));if(!$name)$this->redirect('stores','A group name is required.');$allowed=array_column(array_values(array_filter($this->plugin->get('stores')->all(),static fn($s)=>'connected'===($s['role']??''))),'uuid');$stores=array_values(array_intersect($allowed,array_map('sanitize_text_field',(array)($_POST['group_stores']??array()))));$groups=$this->plugin->get('settings')->groups();$base=sanitize_title($name)?:'group';$id=$base;$n=2;while(isset($groups[$id])){$id=$base.'-'.$n++;}$groups[$id]=array('name'=>$name,'stores'=>$stores);$this->plugin->get('settings')->save_groups($groups);$this->redirect('stores','Store group created.');}
+    public function delete_store_group():void{$id=sanitize_key($_GET['group']??'');if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_GET['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_delete_store_group_'.$id))wp_die('Invalid request.');$groups=$this->plugin->get('settings')->groups();unset($groups[$id]);$this->plugin->get('settings')->save_groups($groups);$this->redirect('stores','Store group deleted.');}
+    public function retry_delivery():void{$event=sanitize_text_field($_GET['event']??'');$store=sanitize_text_field($_GET['store']??'');if(!Access::can_manage()||!wp_verify_nonce(sanitize_text_field($_GET['_wpnonce']??''),'kitgenix_multistore_sync_for_woocommerce_retry_delivery_'.$event.'_'.$store))wp_die('Invalid request.');$this->plugin->get('queue')->retry($event,$store);$this->redirect('sync','Delivery queued for retry.');}
+    private function guard(string$action):void{if(!Access::can_manage()||!check_admin_referer($action))wp_die('Invalid request.');}
+    private function redirect(string$view,string$notice):never{wp_safe_redirect(admin_url('admin.php?page=kitgenix-multistore&view='.$view.'&kitgenix_multistore_sync_for_woocommerce_notice='.rawurlencode($notice)));exit;}
+    private function metric(string$label,string|int$value,string$sub='',bool$html=false):string{$trend=''!==$sub?'<div class="kitgenix-stat-tile-trend kitgenix-trend-neutral"><span>'.esc_html($sub).'</span></div>':'';return '<div class="kitgenix-stat-tile"><div class="kitgenix-stat-tile-head"><span class="kitgenix-stat-tile-label">'.esc_html($label).'</span></div><div class="kitgenix-stat-tile-value">'.($html?wp_kses_post((string)$value):esc_html((string)$value)).'</div>'.$trend.'</div>';}
+    private function integration(string$name,string$status,bool$ok):string{$badge=$ok?'success':'danger';return '<div class="kitgenix-card"><div class="kitgenix-card-body"><div class="kitgenix-card-head-main"><span class="kitgenix-card-icon" aria-hidden="true">'.$this->icon('link').'</span><div class="kitgenix-card-head-text"><h3>'.esc_html($name).'</h3><p>'.esc_html($status).'</p></div></div><p><span class="kitgenix-badge '.$badge.' kitgenix-badge-dot">'.($ok?esc_html__('Integrated','kitgenix-multistore'):esc_html__('No adapter','kitgenix-multistore')).'</span></p></div></div>';}
+    private function checks_table(array$checks):string{$rows='';foreach($checks as$name=>$c){$ok=!empty($c['ok']);$rows.='<tr><td><strong>'.esc_html(ucwords(str_replace('_',' ',$name))).'</strong></td><td><span class="kitgenix-badge '.($ok?'success':'danger').' kitgenix-badge-dot">'.($ok?esc_html__('OK','kitgenix-multistore'):esc_html__('Fail','kitgenix-multistore')).'</span></td><td>'.esc_html((string)($c['value']??'')).'</td></tr>';}return '<div class="kitgenix-table-wrap"><table class="kitgenix-table"><tbody>'.$rows.'</tbody></table></div>';}
+    private function toggle(string$key,string$title,string$desc,array$a):void{echo '<div class="kitgenix-setting-row"><div class="kitgenix-setting-row-label"><label for="kitgenix_field_'.esc_attr($key).'">'.esc_html($title).'</label><p class="kitgenix-setting-row-desc">'.esc_html($desc).'</p></div><div class="kitgenix-setting-row-control"><label class="kitgenix-toggle"><input type="checkbox" id="kitgenix_field_'.esc_attr($key).'" class="kitgenix-toggle-input" name="'.esc_attr($key).'" value="yes" '.checked($a[$key]??'no','yes',false).'><span class="kitgenix-toggle-track"><span class="kitgenix-toggle-thumb"></span></span></label></div></div>';}
+}

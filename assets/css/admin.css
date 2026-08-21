@@ -1,0 +1,182 @@
+/* Kitgenix MultiStore Sync — plugin-specific styles.
+   Layered on top of kitgenix-admin-ui.css (shared component library).
+   Only classes that still carry real meaning for THIS plugin live here:
+   generic layout/card/table/toggle/badge/notice styling now comes from the
+   shared library — see assets/css/kitgenix-admin-ui.css. */
+
+.kitgenix-multistore-sync-for-woocommerce {
+  max-width: 100%;
+  color: var(--kitgenix-text-color);
+}
+
+.kitgenix-multistore-sync-for-woocommerce * {
+  box-sizing: border-box;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-content {
+  display: block;
+}
+
+/* Checklist of checkboxes (roles, target stores, target groups, group
+   members). Used both on this plugin's own admin page (scoped by the
+   .kitgenix-multistore-sync-for-woocommerce wrap) and inside the WooCommerce
+   product-data MultiStore tab rendered by ProductPanel.php (scoped by its
+   panel id) — keep both selectors working. */
+.kitgenix-multistore-sync-for-woocommerce .kitgenix-multistore-sync-for-woocommerce-checklist,
+#kitgenix_multistore_sync_for_woocommerce_product_data .kitgenix-multistore-sync-for-woocommerce-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kitgenix-multistore-sync-for-woocommerce .kitgenix-multistore-sync-for-woocommerce-checklist label,
+#kitgenix_multistore_sync_for_woocommerce_product_data .kitgenix-multistore-sync-for-woocommerce-checklist label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 400;
+  font-size: 13px;
+}
+
+#kitgenix_multistore_sync_for_woocommerce_product_data .kitgenix-multistore-sync-for-woocommerce-checklist small {
+  display: block;
+  margin-top: 4px;
+  color: var(--kitgenix-text-muted);
+}
+
+/* Per-store regular/sale price override inputs — WooCommerce product-data
+   MultiStore tab only (ProductPanel.php), unrelated to this plugin's own
+   admin page. */
+#kitgenix_multistore_sync_for_woocommerce_product_data .kitgenix-multistore-sync-for-woocommerce-store-price {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0 0 8px 22px;
+}
+
+#kitgenix_multistore_sync_for_woocommerce_product_data .kitgenix-multistore-sync-for-woocommerce-store-price input {
+  width: 100%;
+}
+
+/* Sync-status pill shown in the WooCommerce Products list table column
+   (BulkProductTools.php) — outside the .kitgenix-admin-app wrapper, so it
+   cannot use the themed .kitgenix-badge component; kept as its own small
+   pill using the same design tokens. */
+.kitgenix-multistore-sync-for-woocommerce-pill {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  background: var(--kitgenix-bg-light, #F5F9FF);
+  color: var(--kitgenix-text-muted, #64748B);
+}
+
+.kitgenix-multistore-sync-for-woocommerce-pill.is-active {
+  background: var(--kitgenix-success-light, #EAFBF1);
+  color: var(--kitgenix-success, #22C55E);
+}
+
+.kitgenix-multistore-sync-for-woocommerce-pill.is-disabled {
+  background: var(--kitgenix-bg-light, #F5F9FF);
+  color: var(--kitgenix-text-muted, #64748B);
+}
+
+/* Simple label/row list — automation rules and store groups. */
+.kitgenix-multistore-sync-for-woocommerce-rule {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--kitgenix-border-subtle);
+}
+
+.kitgenix-multistore-sync-for-woocommerce-rule:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-rule small {
+  display: block;
+  margin-top: 3px;
+  color: var(--kitgenix-text-muted);
+}
+
+/* Spacing between the note/refund mini-forms inside an order row's
+   "Manage" disclosure panel. */
+.kitgenix-multistore-sync-for-woocommerce-order-actions {
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-order-actions form {
+  border-top: 1px solid var(--kitgenix-border-subtle);
+  padding-top: 12px;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-order-actions form:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-order-actions textarea {
+  width: 100%;
+}
+
+.kitgenix-multistore-sync-for-woocommerce details > summary.button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.kitgenix-multistore-sync-for-woocommerce details > summary.button::-webkit-details-marker {
+  display: none;
+}
+
+/* Native WordPress pagination markup (paginate_links()) rendered on the
+   Orders tab — restyled to sit visually with kitgenix-pagination without
+   reimplementing WP's prev/next/ellipsis logic. */
+.kitgenix-multistore-sync-for-woocommerce-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-pagination .page-numbers {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  margin-left: 4px;
+  padding: 0 8px;
+  border-radius: var(--kitgenix-radius-sm);
+  border: 1px solid var(--kitgenix-border-color);
+  background: var(--kitgenix-bg-white);
+  color: var(--kitgenix-text-color);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-pagination .page-numbers.current {
+  background: var(--kitgenix-brand);
+  border-color: var(--kitgenix-brand);
+  color: #fff;
+}
+
+.kitgenix-multistore-sync-for-woocommerce-pagination .page-numbers.dots {
+  border: 0;
+  background: transparent;
+}
+
+@media (max-width: 782px) {
+  .kitgenix-multistore-sync-for-woocommerce-order-actions {
+    min-width: 0;
+  }
+}
