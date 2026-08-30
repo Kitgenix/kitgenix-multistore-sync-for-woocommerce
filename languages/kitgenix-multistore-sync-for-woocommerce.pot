@@ -1,0 +1,844 @@
+# Copyright (C) 2026 Kitgenix
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Kitgenix MultiStore Sync for WooCommerce 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kitgenix-multistore-sync-for-woocommerce\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-08-30T16:15:20+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: kitgenix-multistore-sync-for-woocommerce\n"
+
+#. Plugin Name of the plugin
+#: kitgenix-multistore-sync-for-woocommerce.php
+msgid "Kitgenix MultiStore Sync for WooCommerce"
+msgstr ""
+
+#. Plugin URI of the plugin
+#. Author URI of the plugin
+#: kitgenix-multistore-sync-for-woocommerce.php
+msgid "https://kitgenix.com/"
+msgstr ""
+
+#. Description of the plugin
+#: kitgenix-multistore-sync-for-woocommerce.php
+msgid "Secure, queue-backed multi-store product, inventory, order, customer and coupon synchronisation for WooCommerce."
+msgstr ""
+
+#. Author of the plugin
+#: kitgenix-multistore-sync-for-woocommerce.php
+#: kitgenix-multistore-sync-for-woocommerce.php:79
+#: kitgenix-multistore-sync-for-woocommerce.php:80
+#: kitgenix-multistore-sync-for-woocommerce.php:449
+#: kitgenix-multistore-sync-for-woocommerce.php:453
+msgid "Kitgenix"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:350
+msgid "Sorry, you are not allowed to access this page."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:362
+#: src/Admin/Admin.php:67
+msgid "MultiStore for WooCommerce"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:366
+msgid "Sync WooCommerce products, prices, media, and metadata between multiple stores with a secure master-child architecture."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:370
+msgid "CAPTCHA for Cloudflare Turnstile"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:374
+msgid "Add Cloudflare Turnstile CAPTCHA to WordPress, WooCommerce, Elementor, and popular form plugins."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:378
+msgid "Custom Tabs for WooCommerce"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:382
+msgid "Add custom WooCommerce product tabs with per-product content, global tabs, and lightweight controls."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:386
+msgid "Document Manager"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:390
+msgid "Manage document downloads with stable links, version history, and private file access."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:394
+msgid "Order Tracking for WooCommerce"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:398
+msgid "Add WooCommerce order tracking, multi-shipment support, email tracking links, and a public customer tracking page."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:402
+msgid "PDF Invoicing for WooCommerce"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:406
+msgid "Generate WooCommerce PDF invoices, receipts, packing slips, and credit notes with secure downloads and configurable email attachments."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:410
+msgid "Stock Sync for WooCommerce"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:414
+msgid "Sync WooCommerce stock between stores with secure master-child inventory updates and signed REST requests."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:418
+msgid "Image Optimizer"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:422
+msgid "Optimize, compress, and resize images in your WordPress media library with automatic on-upload processing and bulk optimization tools."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:426
+msgid "Affiliate Link Manager"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:430
+msgid "Manage affiliate short links, branded redirects, and click tracking from one WordPress dashboard."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:454
+msgid "Install, activate, open, and review Kitgenix plugins."
+msgstr ""
+
+#. translators: %s is the number of active installs and may include a thousands separator, e.g. "1,234". The "+" suffix is literal.
+#: kitgenix-multistore-sync-for-woocommerce.php:493
+#, php-format
+msgid "%s+ installs"
+msgstr ""
+
+#. translators: %s is the average rating out of 5 with one decimal place, e.g. "4.5". The star symbol (★) precedes the number.
+#: kitgenix-multistore-sync-for-woocommerce.php:502
+#, php-format
+msgid "★ %s/5"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:507
+msgid "Not installed"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:509
+msgid "Active"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:511
+msgid "Installed (Inactive)"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:531
+msgid "Install"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:538
+msgid "Activate"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:540
+msgid "You do not have permission to activate plugins."
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:545
+msgid "Open"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:550
+msgid "Details"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:554
+msgid "Review"
+msgstr ""
+
+#: kitgenix-multistore-sync-for-woocommerce.php:555
+msgid "Support Forum"
+msgstr ""
+
+#: src/Admin/Admin.php:59
+msgid "Settings"
+msgstr ""
+
+#: src/Admin/Admin.php:60
+msgid "You do not have permission to access this page."
+msgstr ""
+
+#: src/Admin/Admin.php:70
+msgid "MultiStore navigation"
+msgstr ""
+
+#: src/Admin/Admin.php:76
+#: src/Admin/Admin.php:79
+msgid "Search settings"
+msgstr ""
+
+#: src/Admin/Admin.php:79
+msgid "Search settings…"
+msgstr ""
+
+#: src/Admin/Admin.php:81
+msgid "Clear search"
+msgstr ""
+
+#: src/Admin/Admin.php:84
+msgid "Toggle color theme"
+msgstr ""
+
+#: src/Admin/Admin.php:85
+msgid "Kitgenix Hub"
+msgstr ""
+
+#: src/Admin/Admin.php:86
+msgid "Toggle navigation"
+msgstr ""
+
+#: src/Admin/Admin.php:93
+msgid "Help and links"
+msgstr ""
+
+#: src/Admin/Admin.php:95
+msgid "Need Help?"
+msgstr ""
+
+#: src/Admin/Admin.php:96
+msgid "Open the documentation for setup guidance or send us a support request if you need help configuring the plugin."
+msgstr ""
+
+#: src/Admin/Admin.php:98
+msgid "Documentation"
+msgstr ""
+
+#: src/Admin/Admin.php:99
+msgid "Request Support"
+msgstr ""
+
+#: src/Admin/Admin.php:103
+msgid "Visit Our Official Facebook Group"
+msgstr ""
+
+#: src/Admin/Admin.php:104
+msgid "Join the Kitgenix community to ask questions, share feedback, and keep up with product updates."
+msgstr ""
+
+#: src/Admin/Admin.php:106
+msgid "Join Group"
+msgstr ""
+
+#: src/Admin/Admin.php:110
+msgid "Follow Us"
+msgstr ""
+
+#: src/Admin/Admin.php:111
+msgid "Keep up with new releases, tutorials, and product news across our channels."
+msgstr ""
+
+#: src/Admin/Admin.php:172
+msgid "Log"
+msgstr ""
+
+#: src/Admin/Admin.php:173
+msgid "Support"
+msgstr ""
+
+#: src/Admin/Admin.php:681
+msgid "Activity Log"
+msgstr ""
+
+#: src/Admin/Admin.php:681
+msgid "A record of recent network sync events, newest first."
+msgstr ""
+
+#: src/Admin/Admin.php:683
+msgid "Search log…"
+msgstr ""
+
+#: src/Admin/Admin.php:684
+msgid "Time"
+msgstr ""
+
+#: src/Admin/Admin.php:684
+msgid "Level"
+msgstr ""
+
+#: src/Admin/Admin.php:684
+#: src/Admin/Admin.php:696
+msgid "Category"
+msgstr ""
+
+#: src/Admin/Admin.php:684
+msgid "Message"
+msgstr ""
+
+#: src/Admin/Admin.php:684
+msgid "Context"
+msgstr ""
+
+#: src/Admin/Admin.php:691
+msgid "No matching log entries"
+msgstr ""
+
+#: src/Admin/Admin.php:693
+msgid "No log entries yet"
+msgstr ""
+
+#: src/Admin/Admin.php:693
+msgid "Sync activity will appear here as it happens."
+msgstr ""
+
+#: src/Admin/Admin.php:696
+msgid "What the categories mean"
+msgstr ""
+
+#: src/Admin/Admin.php:696
+msgid "Recoverable categories are usually not a problem – they explain themselves and clear up on their own. Everything else is worth a look."
+msgstr ""
+
+#: src/Admin/Admin.php:696
+msgid "What it means"
+msgstr ""
+
+#: src/Admin/Admin.php:696
+msgid "Action needed?"
+msgstr ""
+
+#: src/Admin/Admin.php:817
+msgid "Copy plugin link:"
+msgstr ""
+
+#: src/Admin/Admin.php:821
+msgid "Support Kitgenix"
+msgstr ""
+
+#: src/Admin/Admin.php:822
+msgid "Help us keep building"
+msgstr ""
+
+#: src/Admin/Admin.php:823
+msgid "This plugin keeps every connected store on one shared catalogue – products, stock, orders, coupons and customers stay in step through a signed queue instead of manual re-entry, with no premium tiers or feature gates anywhere. If it saves you the trouble of updating several stores by hand, a donation helps keep it built, tested and supported."
+msgstr ""
+
+#: src/Admin/Admin.php:824
+msgid "Donate with PayPal"
+msgstr ""
+
+#: src/Admin/Admin.php:825
+msgid "Donations are entirely optional. Kitgenix plugins keep working whether you donate or not."
+msgstr ""
+
+#: src/Admin/Admin.php:829
+msgid "Leave a review"
+msgstr ""
+
+#: src/Admin/Admin.php:830
+msgid "Read the docs"
+msgstr ""
+
+#: src/Admin/Admin.php:831
+msgid "Copy plugin link"
+msgstr ""
+
+#: src/Admin/Admin.php:918
+msgid "Integrated"
+msgstr ""
+
+#: src/Admin/Admin.php:918
+msgid "No adapter"
+msgstr ""
+
+#: src/Admin/Admin.php:919
+msgid "OK"
+msgstr ""
+
+#: src/Admin/Admin.php:919
+msgid "Fail"
+msgstr ""
+
+#: src/Admin/BulkProductTools.php:18
+#: src/Admin/BulkProductTools.php:19
+msgid "Kitgenix MultiStore"
+msgstr ""
+
+#: src/Admin/BulkProductTools.php:37
+#: src/Admin/ProductPanel.php:12
+msgid "MultiStore"
+msgstr ""
+
+#: src/Admin/ProductPanel.php:13
+msgid "Network ID"
+msgstr ""
+
+#: src/Admin/ProductPanel.php:13
+msgid "Assigned on first sync"
+msgstr ""
+
+#: src/Admin/ProductPanel.php:14
+msgid "Network sync"
+msgstr ""
+
+#: src/Admin/ProductPanel.php:14
+msgid "Synchronise this product with selected connected stores."
+msgstr ""
+
+#: src/Admin/ProductPanel.php:15
+msgid "Target stores"
+msgstr ""
+
+#: src/Admin/ProductPanel.php:15
+msgid "Leave all stores and groups unchecked to sync to every connected store."
+msgstr ""
+
+#: src/Admin/ProductPanel.php:15
+msgid "Target groups"
+msgstr ""
+
+#: src/Admin/ProductPanel.php:16
+msgid "Store overrides"
+msgstr ""
+
+#: src/Admin/ProductPanel.php:16
+msgid "Checked fields remain locally managed and are not overwritten by incoming product updates."
+msgstr ""
+
+#: src/Orders/MyAccount.php:31
+msgid "Orders from our other stores"
+msgstr ""
+
+#: src/Orders/MyAccount.php:31
+msgid "Order"
+msgstr ""
+
+#: src/Orders/MyAccount.php:31
+msgid "Store"
+msgstr ""
+
+#: src/Orders/MyAccount.php:31
+msgid "Date"
+msgstr ""
+
+#: src/Orders/MyAccount.php:31
+msgid "Status"
+msgstr ""
+
+#: src/Orders/MyAccount.php:31
+msgid "Total"
+msgstr ""
+
+#: src/Orders/MyAccount.php:36
+msgid "These orders are read-only here and remain managed by the store where they were placed."
+msgstr ""
+
+#: src/Privacy/Privacy.php:11
+#: src/Privacy/Privacy.php:12
+msgid "Kitgenix MultiStore network data"
+msgstr ""
+
+#: src/Privacy/Privacy.php:13
+msgid "MultiStore Orders"
+msgstr ""
+
+#: src/Privacy/Privacy.php:13
+msgid "MultiStore Customer Data"
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:37
+msgid "Informational log entry – not an error."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:44
+msgid "WordPress could not reach the other store over HTTPS (connection refused, DNS failure, or timeout at the transport layer). Usually a transient network issue – the delivery will retry automatically."
+msgstr ""
+
+#. translators: %d: HTTP status code returned by the remote store
+#: src/Support/ErrorCatalog.php:54
+#, php-format
+msgid "The other store's server returned a temporary error (HTTP %d). Usually resolves on its own – only investigate if it persists across many retries."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:60
+msgid "The other store rate-limited this request (HTTP 429, too many requests). The delivery will retry automatically after a short backoff."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:66
+msgid "The other store was already processing this event (HTTP 409 conflict). Usually resolves itself on the next retry."
+msgstr ""
+
+#. translators: %d: HTTP status code returned by the remote store
+#: src/Support/ErrorCatalog.php:72
+#, php-format
+msgid "The other store rejected this request as invalid, unauthorised, or not found (HTTP %d). Check that the pairing secret and store role are still correct on both ends."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:80
+msgid "Failed – reason not mapped to a known category."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:94
+msgid "An incoming request from another store failed Kitgenix signature/header authentication."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:95
+msgid "If this store should be paired, reconnect it from Stores. Repeated attempts from an unknown store may be a scan – no action required unless it persists."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:99
+msgid "A request nonce was already used, or the request timestamp was outside the 5-minute signing window."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:100
+msgid "Usually not a problem – a duplicate delivery retry or a few seconds of clock drift between servers. Only investigate if it happens on every request from one store (check NTP/server time sync)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:104
+msgid "A store connection, pairing secret, or URL is missing, invalid, or the local encryption key could not be used."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:105
+msgid "Go to Stores and reconnect the affected store, or re-run pairing."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:109
+msgid "Too many pairing attempts were made from the same IP address in a short time."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:110
+msgid "Not a problem by itself – a protective limit. Wait a few minutes and try pairing again."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:114
+msgid "The remote store could not be reached, or its server returned a temporary error or rate limit."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:115
+msgid "Usually transient. The delivery retries automatically with backoff – only investigate if a specific store fails consistently."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:119
+msgid "The same event was already being processed, or arrived at the remote store at the same time as another attempt."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:120
+msgid "Usually not a problem – resolves itself on the next automatic retry."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:124
+msgid "The remote store rejected the request outright (bad credentials, missing route, or malformed request)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:125
+msgid "Check that both stores are running compatible plugin versions and the pairing secret matches."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:129
+msgid "The event or request is not allowed under the current network role/direction settings (e.g. a connected store sending something only the control store accepts)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:130
+msgid "Review Settings → sync direction and store roles. If this is expected (e.g. staging protection), no action is needed."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:134
+msgid "A sync event or request was missing required fields or contained data in an unexpected shape."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:135
+msgid "Usually indicates a version mismatch between stores. Update Kitgenix MultiStore on both ends."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:139
+msgid "The network object (product, order, coupon, review) has no corresponding local object on this store – it may have been deleted locally."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:140
+msgid "Re-sync the item from its source store, or recreate the mapping via Products/Sync Centre."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:144
+msgid "The request contained a value WooCommerce or Kitgenix rejected – an invalid status, an empty note, a refund amount out of range, or a disabled feature."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:145
+msgid "Check the originating action on the source store. If refunds are involved, confirm remote gateway refunds are enabled in Settings if that is intended."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:149
+msgid "WooCommerce or PHP raised an unexpected exception while applying a change (creating an order, saving a product, processing a refund)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:150
+msgid "Check the Log for the underlying message. If it repeats, it usually points to a plugin conflict or a data issue worth reporting to support."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:163
+msgid "The request was missing one or more required Kitgenix signing headers, so it was rejected before authentication could be attempted."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:167
+msgid "The request identified a store UUID this site has not paired with."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:171
+msgid "The request signature did not match – the shared secret may be out of date, or the request was tampered with in transit."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:177
+msgid "This exact request nonce was already used. Usually a duplicate delivery retry (e.g. after a network blip) rather than a genuine replay attack."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:181
+msgid "The signed request arrived outside the 5-minute signing window. Usually clock drift between the two servers or a slow network hop, not an attack."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:187
+msgid "The store this delivery targets is no longer in the local connections list."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:191
+msgid "The stored connection secret for this store could not be read or decrypted."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:195
+msgid "The connection secret could not be encrypted or decrypted on this server (missing OpenSSL, or the encryption key changed)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:199
+msgid "The remote store UUID supplied during pairing was not a valid UUID."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:203
+msgid "The remote store URL supplied during pairing was not a usable URL."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:207
+msgid "The store URL entered for pairing is not a valid, reachable address."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:211
+msgid "HTTPS is required to pair or connect production stores; the URL supplied used plain HTTP."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:215
+msgid "The remote store rejected the pairing attempt."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:219
+msgid "The one-time pairing code entered was wrong or has expired (codes last 10 minutes)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:225
+msgid "More than 15 pairing attempts were made from the same IP within 10 minutes."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:231
+msgid "This event is already being processed by this store. Usually resolves itself once the in-flight attempt finishes."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:235
+msgid "Two deliveries for the same event arrived at the same moment. The losing request is retried automatically."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:241
+msgid "This event type is not authorised from the sending store under the current network role/direction settings."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:245
+msgid "The authenticated store is no longer a recognised peer in this network."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:249
+msgid "Order snapshots are only accepted by the control store, and this store is not currently the control store."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:253
+msgid "Customer snapshots are only accepted by the control store."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:257
+msgid "Inventory deltas are only applied by the control store."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:261
+msgid "Network customer order history is only served by the control store."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:265
+msgid "Sequential order numbers are only allocated by the control store."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:269
+msgid "The authenticated store's role does not permit this REST operation."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:273
+msgid "Outbound network writes are disabled because this environment was detected as non-production (staging protection)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:279
+msgid "An incoming sync event was missing one or more required fields."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:283
+msgid "The authenticated store does not match the source store declared inside the event payload."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:287
+msgid "The event declared a type this store version does not recognise – likely a version mismatch between stores."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:291
+msgid "An order snapshot was missing its network ID or order ID."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:295
+msgid "A coupon event was missing its network ID or code."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:299
+msgid "A review event was missing a valid review or product network ID."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:303
+msgid "A product payload was missing its network ID."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:307
+msgid "An order import payload had an invalid network ID."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:311
+msgid "The pairing request was missing a usable secret or store details."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:317
+msgid "No local product could be matched to this network inventory update (by mapping or SKU)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:321
+msgid "No local product mapping exists for this network product, so it could not be trashed."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:325
+msgid "The local product for this sync could not be found – it may have been deleted on this store."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:329
+msgid "No local coupon mapping exists for this network coupon, so it could not be trashed."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:333
+msgid "No local order mapping exists for this network order reference."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:337
+msgid "The local order for this action could not be found."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:341
+msgid "No remote order snapshot exists on the control store for this network order yet."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:345
+msgid "The product a synced review belongs to has no local mapping on this store."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:349
+msgid "No control store is currently connected to allocate the next sequential order number."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:355
+msgid "The order status supplied is not a valid WooCommerce order status."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:359
+msgid "An order note action was submitted with empty note text."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:363
+msgid "A refund was requested with an amount of zero or less."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:367
+msgid "A refund was requested for more than the order's remaining refundable amount."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:371
+msgid "The synced product declared a product type this store does not support."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:375
+msgid "A customer order history lookup was requested without a valid email address."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:379
+msgid "Network sequential order numbers were requested but are turned off in Settings."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:383
+msgid "Network My Account order history was requested but is turned off in Settings."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:387
+msgid "A refund tried to charge back the original payment gateway, but remote gateway refunds are turned off in Settings."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:393
+msgid "Applying this event raised an unexpected PHP exception. See the Log for the underlying message."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:397
+msgid "The local sync event record could not be created (database write failure)."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:401
+msgid "WooCommerce raised an exception while applying the synced product data. See the Log for the underlying message."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:405
+msgid "WooCommerce accepted the refund request but did not create a refund object."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:409
+msgid "WooCommerce could not create the local order while importing a network order snapshot."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:413
+msgid "The imported order's creation date could not be parsed, so the default order date was kept. Non-blocking – the order itself still imported."
+msgstr ""
+
+#: src/Support/ErrorCatalog.php:417
+msgid "Reading the WooCommerce Square integration's system-of-record setting raised an exception. Non-blocking – the Integrations tab shows Square as detected without that extra detail."
+msgstr ""
+
+#: src/Sync/InventorySync.php:195
+msgid "We could not verify network stock availability. Please try checkout again."
+msgstr ""
+
+#: src/Sync/InventorySync.php:196
+msgid "an item"
+msgstr ""
+
+#. translators: 1: available quantity, 2: item name
+#: src/Sync/InventorySync.php:198
+#, php-format
+msgid "Only %1$s of %2$s is currently available across the store network."
+msgstr ""
+
+#: src/Sync/OrderSync.php:108
+msgid "Status updated from Kitgenix MultiStore control store."
+msgstr ""

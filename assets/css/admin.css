@@ -1,12 +1,27 @@
-/* Kitgenix MultiStore Sync — plugin-specific styles.
+/* Kitgenix MultiStore Sync – plugin-specific styles.
    Layered on top of kitgenix-admin-ui.css (shared component library).
    Only classes that still carry real meaning for THIS plugin live here:
    generic layout/card/table/toggle/badge/notice styling now comes from the
-   shared library — see assets/css/kitgenix-admin-ui.css. */
+   shared library – see assets/css/kitgenix-admin-ui.css. */
 
 .kitgenix-multistore-sync-for-woocommerce {
   max-width: 100%;
   color: var(--kitgenix-text-color);
+}
+
+/* ----------------------------------------------------------------
+  WooCommerce product data tab icon (left sidebar)
+----------------------------------------------------------------- */
+#woocommerce-product-data ul.wc-tabs li.kitgenix-multistore-sync-for-woocommerce-product-data-tab a::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin: 0 8px 0 0;
+  vertical-align: -2px;
+  background-color: currentColor;
+  -webkit-mask: url('../images/logos/kitgenix-wordpress-admin-menu-favicon.svg') no-repeat center / contain;
+  mask: url('../images/logos/kitgenix-wordpress-admin-menu-favicon.svg') no-repeat center / contain;
 }
 
 .kitgenix-multistore-sync-for-woocommerce * {
@@ -21,7 +36,7 @@
    members). Used both on this plugin's own admin page (scoped by the
    .kitgenix-multistore-sync-for-woocommerce wrap) and inside the WooCommerce
    product-data MultiStore tab rendered by ProductPanel.php (scoped by its
-   panel id) — keep both selectors working. */
+   panel id) – keep both selectors working. */
 .kitgenix-multistore-sync-for-woocommerce .kitgenix-multistore-sync-for-woocommerce-checklist,
 #kitgenix_multistore_sync_for_woocommerce_product_data .kitgenix-multistore-sync-for-woocommerce-checklist {
   display: flex;
@@ -46,7 +61,7 @@
   color: var(--kitgenix-text-muted);
 }
 
-/* Per-store regular/sale price override inputs — WooCommerce product-data
+/* Per-store regular/sale price override inputs – WooCommerce product-data
    MultiStore tab only (ProductPanel.php), unrelated to this plugin's own
    admin page. */
 #kitgenix_multistore_sync_for_woocommerce_product_data .kitgenix-multistore-sync-for-woocommerce-store-price {
@@ -61,7 +76,7 @@
 }
 
 /* Sync-status pill shown in the WooCommerce Products list table column
-   (BulkProductTools.php) — outside the .kitgenix-admin-app wrapper, so it
+   (BulkProductTools.php) – outside the .kitgenix-admin-app wrapper, so it
    cannot use the themed .kitgenix-badge component; kept as its own small
    pill using the same design tokens. */
 .kitgenix-multistore-sync-for-woocommerce-pill {
@@ -84,7 +99,7 @@
   color: var(--kitgenix-text-muted, #64748B);
 }
 
-/* Simple label/row list — automation rules and store groups. */
+/* Simple label/row list – automation rules and store groups. */
 .kitgenix-multistore-sync-for-woocommerce-rule {
   display: flex;
   justify-content: space-between;
@@ -140,7 +155,7 @@
 }
 
 /* Native WordPress pagination markup (paginate_links()) rendered on the
-   Orders tab — restyled to sit visually with kitgenix-pagination without
+   Orders tab – restyled to sit visually with kitgenix-pagination without
    reimplementing WP's prev/next/ellipsis logic. */
 .kitgenix-multistore-sync-for-woocommerce-pagination {
   display: flex;

@@ -24,12 +24,16 @@ final class NetworkMedia {
         return $this->sideload( $url, $post_id, $data );
     }
 
-    public function attachment_url( string|false $url, int $attachment_id ): string|false {
+    public function attachment_url( string|false $url, int|string $attachment_id ): string|false {
+        $attachment_id = (int) $attachment_id;
+        if ( ! $attachment_id ) return $url;
         $remote = (string) get_post_meta( $attachment_id, '_kitgenix_multistore_sync_for_woocommerce_remote_media_url', true );
         return $remote ?: $url;
     }
 
-    public function attachment_src( array|false $image, int $attachment_id, string|array|int $size, bool $icon ): array|false {
+    public function attachment_src( array|false $image, int|string $attachment_id, string|array|int $size, bool $icon ): array|false {
+        $attachment_id = (int) $attachment_id;
+        if ( ! $attachment_id ) return $image;
         $remote = (string) get_post_meta( $attachment_id, '_kitgenix_multistore_sync_for_woocommerce_remote_media_url', true );
         if ( ! $remote ) return $image;
         $width = (int) get_post_meta( $attachment_id, '_kitgenix_multistore_sync_for_woocommerce_remote_width', true ) ?: 1600;
@@ -37,12 +41,15 @@ final class NetworkMedia {
         return array( $remote, $width, $height, false );
     }
 
-    public function disable_remote_srcset( array|false $sources, array $size_array, string $image_src, array $image_meta, int $attachment_id ): array|false {
+    public function disable_remote_srcset( array|false $sources, array $size_array, string $image_src, array $image_meta, int|string $attachment_id ): array|false {
+        $attachment_id = (int) $attachment_id;
+        if ( ! $attachment_id ) return $sources;
         return get_post_meta( $attachment_id, '_kitgenix_multistore_sync_for_woocommerce_remote_media_url', true ) ? false : $sources;
     }
 
     private function existing( string $url ): int {
         global $wpdb;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- {$wpdb->postmeta} is WordPress core's own table property, not user input; the value is passed through $wpdb->prepare().
         return (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_kitgenix_multistore_sync_for_woocommerce_source_url','_kitgenix_multistore_sync_for_woocommerce_remote_media_url') AND meta_value=%s LIMIT 1", $url
         ) );

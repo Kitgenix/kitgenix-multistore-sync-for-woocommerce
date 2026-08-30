@@ -25,7 +25,7 @@ final class Client {
         $timestamp = (string) time();
         $nonce     = wp_generate_password( 32, false, false );
         $signature = Signer::sign( $secret, $method, $route, $timestamp, $nonce, $body );
-        $url       = trailingslashit( $store['url'] ) . 'wp-json/kitgenix-multistore/v1' . $route;
+        $url       = trailingslashit( $store['url'] ) . 'wp-json/kitgenix-multistore-sync-for-woocommerce/v1' . $route;
         $settings = new Settings();
         $timeout = max( 5, min( 60, (int) $settings->get( 'request_timeout', 20 ) ) );
         $args = array(
@@ -73,7 +73,7 @@ final class Client {
             ),
         );
         $response = wp_remote_post(
-            trailingslashit( $url ) . 'wp-json/kitgenix-multistore/v1/pair',
+            trailingslashit( $url ) . 'wp-json/kitgenix-multistore-sync-for-woocommerce/v1/pair',
             array( 'timeout' => 20, 'sslverify' => Environment::should_verify_ssl( $url ), 'headers' => array( 'Content-Type' => 'application/json' ), 'body' => wp_json_encode( $payload ) )
         );
         if ( is_wp_error( $response ) ) { return $response; }
@@ -82,7 +82,9 @@ final class Client {
         if ( 200 !== $status || ! is_array( $data ) || empty( $data['store']['uuid'] ) ) {
             return new \WP_Error( 'kitgenix_multistore_sync_for_woocommerce_pair_failed', is_array( $data ) ? (string) ( $data['message'] ?? 'Pairing failed.' ) : 'Pairing failed.' );
         }
-        $saved = $this->stores->save( array_merge( $data['store'], array( 'role' => 'connected', 'status' => 'active', 'capabilities' => $data['capabilities'] ?? array() ) ), $secret );
+        $capabilities = (array) ( $data['capabilities'] ?? array() );
+        $capabilities['kitgenix'] = (string) ( $data['store']['version'] ?? '' );
+        $saved = $this->stores->save( array_merge( $data['store'], array( 'role' => 'connected', 'status' => 'active', 'capabilities' => $capabilities ) ), $secret );
         return is_wp_error( $saved ) ? $saved : $data;
     }
 }

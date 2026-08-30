@@ -31,7 +31,7 @@ final class Routes {
     public function hooks(): void { add_action( 'rest_api_init', array( $this, 'register' ) ); }
 
     public function register(): void {
-        $ns='kitgenix-multistore/v1';
+        $ns='kitgenix-multistore-sync-for-woocommerce/v1';
         register_rest_route($ns,'/pair',array('methods'=>'POST','callback'=>array($this,'pair'),'permission_callback'=>'__return_true'));
         register_rest_route($ns,'/health',array('methods'=>array('GET','POST'),'callback'=>array($this,'health'),'permission_callback'=>array($this->auth,'verify')));
         register_rest_route($ns,'/events',array('methods'=>'POST','callback'=>array($this,'events'),'permission_callback'=>array($this->auth,'verify')));
@@ -46,7 +46,7 @@ final class Routes {
     }
 
     public function pair(\WP_REST_Request $request):\WP_REST_Response|\WP_Error{
-        $ip=sanitize_text_field($_SERVER['REMOTE_ADDR']??'unknown'); $rate='kitgenix_multistore_sync_for_woocommerce_pair_rate_'.md5($ip); $count=(int)get_transient($rate); if($count>15){return new \WP_Error('kitgenix_multistore_sync_for_woocommerce_pair_rate','Too many pairing attempts.',array('status'=>429));} set_transient($rate,$count+1,10*MINUTE_IN_SECONDS);
+        $ip=sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']??'unknown')); $rate='kitgenix_multistore_sync_for_woocommerce_pair_rate_'.md5($ip); $count=(int)get_transient($rate); if($count>15){return new \WP_Error('kitgenix_multistore_sync_for_woocommerce_pair_rate','Too many pairing attempts.',array('status'=>429));} set_transient($rate,$count+1,10*MINUTE_IN_SECONDS);
         $p=(array)$request->get_json_params(); $code=sanitize_text_field($p['code']??''); $expected=(string)get_transient('kitgenix_multistore_sync_for_woocommerce_pair_code');
         if(!$expected||!hash_equals($expected,$code)){return new \WP_Error('kitgenix_multistore_sync_for_woocommerce_pair_code','Pairing code is invalid or expired.',array('status'=>403));}
         $secret=(string)($p['secret']??'');$store=(array)($p['store']??array()); if(strlen($secret)<32||empty($store['uuid'])||empty($store['url'])){return new \WP_Error('kitgenix_multistore_sync_for_woocommerce_pair_payload','Invalid pairing payload.',array('status'=>400));}

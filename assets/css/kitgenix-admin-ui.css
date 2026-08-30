@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   Kitgenix Admin UI — Shared Design System
+   Kitgenix Admin UI – Shared Design System
    Keep this file identical between plugins to ensure consistent UI/UX.
    Tokens below follow the Kitgenix Brand Kit (Primary Blue #214BFF, Electric Blue
    #42B3FF, Midnight #071B3A, Slate #64748B, Manrope/Inter type, 8/12/16/20/28
@@ -35,7 +35,7 @@
   --kitgenix-info-light: #E8F7FE;
   --kitgenix-info-border: #B9E7FA;
 
-  /* Radius scale — Small / Buttons / Inputs / Cards / App Icons */
+  /* Radius scale – Small / Buttons / Inputs / Cards / App Icons */
   --kitgenix-radius-sm: 8px;
   --kitgenix-radius-md: 12px;
   --kitgenix-radius-lg: 16px;
@@ -43,7 +43,7 @@
   --kitgenix-radius-2xl: 28px;
   --kitgenix-radius-pill: 999px;
 
-  /* Shadows — rgba(7, 27, 58, ...) per brand kit */
+  /* Shadows – rgba(7, 27, 58, ...) per brand kit */
   --kitgenix-shadow-sm: 0 2px 8px rgba(7, 27, 58, 0.06);
   --kitgenix-shadow-md: 0 8px 30px rgba(7, 27, 58, 0.08);
   --kitgenix-shadow-lg: 0 16px 48px rgba(7, 27, 58, 0.12);
@@ -58,7 +58,7 @@
   --kitgenix-space-12: 48px;
   --kitgenix-space-16: 64px;
 
-  /* Typography — Manrope for headings, Inter for UI/body */
+  /* Typography – Manrope for headings, Inter for UI/body */
   --kitgenix-font-heading: 'Manrope', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --kitgenix-font-body: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 
@@ -67,7 +67,7 @@
   --kitgenix-focus-ring: 0 0 0 3px var(--kitgenix-brand-light);
 }
 
-/* Dark theme overrides — activated by toggling [data-kitgenix-theme="dark"] on
+/* Dark theme overrides – activated by toggling [data-kitgenix-theme="dark"] on
    .kitgenix-admin-app (see kitgenix-admin-tabs.js). Because every component below
    consumes the --kitgenix-* custom properties, re-pointing them here re-themes the
    whole admin screen, not just the topbar. Built on Midnight (#071B3A), the brand
@@ -104,7 +104,7 @@
 ═══════════════════════════════════════ */
 
 /* Drop WP core's #wpcontent gutter so our canvas sits flush against the
-   admin sidebar — same technique FluentCRM uses, rather than guessing
+   admin sidebar – same technique FluentCRM uses, rather than guessing
    negative margins to counteract .wrap's default inset (which overshoots:
    width:auto + negative margins on both sides makes the browser compute a
    width wider than the container, causing horizontal overflow). */
@@ -118,7 +118,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   padding: 0 !important;
   max-width: none !important;
   width: auto !important;
-  /* WordPress core's own admin content background (body.wp-admin) — set it
+  /* WordPress core's own admin content background (body.wp-admin) – set it
      explicitly rather than leaving it to inherit, so the canvas behind the
      sidebar/cards always reads as "default WordPress", not whatever a
      theme, admin color scheme, or another plugin's page styles left behind. */
@@ -742,7 +742,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   box-sizing: border-box;
 }
 
-/* Two-column shell — main content plus a real sidebar column — only when a
+/* Two-column shell – main content plus a real sidebar column – only when a
    sidebar is actually present (some screens are content-only). Below this
    width there isn't room for a fixed 320px rail without crushing the
    content, so both stack in normal flow instead. */
@@ -773,7 +773,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 /* Sidebar sticks in its column while the main content scrolls past it.
    --kitgenix-sticky-offset is measured at runtime by kitgenix-admin-tabs.js
    from the topbar's real height (it's sticky itself, above this), so the
-   sidebar always sits flush beneath it — the 96px fallback covers the
+   sidebar always sits flush beneath it – the 96px fallback covers the
    common single-line desktop topbar before JS runs. */
 @media screen and (min-width: 1100px) {
   .kitgenix-settings-sidebar {
@@ -792,7 +792,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   align-content: start;
 }
 
-/* Sidebar cards use the plain .kitgenix-card + .kitgenix-card-body markup —
+/* Sidebar cards use the plain .kitgenix-card + .kitgenix-card-body markup –
    no modifier class needed. Living inside .kitgenix-settings-sidebar is
    enough context to get the tighter heading/copy sizing a 320px rail
    needs versus a full-width content card. */
@@ -847,7 +847,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 }
 
 /* These are flat black SVGs with no fill override, so they'd be nearly
-   invisible against a dark sidebar card — invert them in dark mode. */
+   invisible against a dark sidebar card – invert them in dark mode. */
 .kitgenix-admin-app[data-kitgenix-theme="dark"] .kitgenix-sidebar-social-link img {
   filter: invert(1);
 }
@@ -911,11 +911,11 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   border-bottom: 1px solid var(--kitgenix-border-subtle);
 }
 
-/* Input fields — fill whatever container they're placed in (a form-table
+/* Input fields – fill whatever container they're placed in (a form-table
    cell, a .kitgenix-setting-row-control, a .kitgenix-field-grid column) so
    width is always controlled by the layout wrapper, never the browser's
    intrinsic input size. */
-.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], select, textarea):not(.kitgenix-topbar-search-input):not([data-default-color]) {
+.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], input[type="datetime-local"], select, textarea):not(.kitgenix-topbar-search-input):not([data-default-color]) {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -930,26 +930,26 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   transition: border-color var(--kitgenix-transition), box-shadow var(--kitgenix-transition);
 }
 
-.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], select, textarea):not(.kitgenix-topbar-search-input):focus {
+.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], input[type="datetime-local"], select, textarea):not(.kitgenix-topbar-search-input):focus {
   border-color: var(--kitgenix-brand);
   box-shadow: 0 0 0 3px var(--kitgenix-brand-light);
   outline: none;
 }
 
-/* WordPress's own short-field helpers (.small-text / .tiny-text — a
+/* WordPress's own short-field helpers (.small-text / .tiny-text – a
    percentage, a pixel dimension) still win over the 100% default above;
    a field an author opted into one of those is meant to stay that narrow.
-   .regular-text is NOT included here on purpose — every "label above a
+   .regular-text is NOT included here on purpose – every "label above a
    single text field" row in this app uses .regular-text, and it should
    fill the row like every other field rather than stopping at a fixed
    25em partway across. Matches the same :is(...) selector list as the
    rule above so specificity ties and source order decides. */
-.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], select, textarea):not(.kitgenix-topbar-search-input).small-text {
+.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], input[type="datetime-local"], select, textarea):not(.kitgenix-topbar-search-input).small-text {
   width: 90px;
   max-width: 100%;
 }
 
-.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], select, textarea):not(.kitgenix-topbar-search-input).tiny-text {
+.kitgenix-admin-app :is(input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], input[type="datetime-local"], select, textarea):not(.kitgenix-topbar-search-input).tiny-text {
   width: 50px;
   max-width: 100%;
 }
@@ -981,7 +981,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 ═══════════════════════════════════════ */
 
 /* Visually hides an element while keeping it in the accessibility tree and
-   keyboard-focusable — used to hide the real <input type="checkbox"> /
+   keyboard-focusable – used to hide the real <input type="checkbox"> /
    <input type="file"> behind styled controls (toggle switch, dropzone)
    without breaking name= / $_POST handling or tab order. */
 .kitgenix-sr-only {
@@ -997,7 +997,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 }
 
 /* ═══════════════════════════════════════
-   BADGES — EXTENDED VARIANTS
+   BADGES – EXTENDED VARIANTS
    Extends the base .kitgenix-badge (see BADGES section above) with the
    remaining semantic colors plus a dot-style status pill.
 ═══════════════════════════════════════ */
@@ -1041,7 +1041,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 }
 
 /* ═══════════════════════════════════════
-   CARDS — ICON HEADERS, BODY & COLLAPSIBLE
+   CARDS – ICON HEADERS, BODY & COLLAPSIBLE
    Builds on the existing .kitgenix-card / .kitgenix-card-head from the
    CARDS & SECTIONS section above.
 ═══════════════════════════════════════ */
@@ -1099,7 +1099,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 }
 
 /* Plain content wrapper for anything placed inside a .kitgenix-card after
-   the optional .kitgenix-card-head — gives consistent vertical rhythm for
+   the optional .kitgenix-card-head – gives consistent vertical rhythm for
    paragraphs, lists and controls. */
 .kitgenix-card-body {
   font-size: 13px;
@@ -1164,7 +1164,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   transition: transform 0.15s ease;
 }
 
-.kitgenix-collapsible.kitgenix-collapsible-open .kitgenix-collapsible-chevron {
+[data-kitgenix-collapsible].kitgenix-collapsible-open .kitgenix-collapsible-chevron {
   transform: rotate(180deg);
   color: var(--kitgenix-brand);
 }
@@ -1239,7 +1239,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   gap: 6px;
 }
 
-/* Kept as a no-op alias — every row stacks label-above-control by default
+/* Kept as a no-op alias – every row stacks label-above-control by default
    now, so this modifier no longer changes anything, but existing markup
    that still applies it keeps working. */
 .kitgenix-setting-row.kitgenix-setting-row-stacked {
@@ -1256,7 +1256,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 /* ═══════════════════════════════════════
    FIELD GRID
    Splits a .kitgenix-setting-row-control (or any container) into evenly
-   sized columns for related fields — e.g. width/height, min/max, from/to.
+   sized columns for related fields – e.g. width/height, min/max, from/to.
    A single field left in its container already fills it at 100% (see
    INPUT FIELDS above); wrap two in .kitgenix-field-grid-2 for 50%/50%,
    three in .kitgenix-field-grid-3 for 33%/33%/33%, and so on.
@@ -1287,7 +1287,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 /* ═══════════════════════════════════════
    TOGGLE SWITCH
    Restyles a real <input type="checkbox"> so existing name= attributes and
-   $_POST handling keep working — the input stays in the DOM, focusable and
+   $_POST handling keep working – the input stays in the DOM, focusable and
    functional, just visually hidden behind the track/thumb.
 ═══════════════════════════════════════ */
 
@@ -1297,6 +1297,20 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   gap: 10px;
   cursor: pointer;
   user-select: none;
+}
+
+.kitgenix-toggle-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.kitgenix-checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 14px 6px 0;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .kitgenix-toggle-input {
@@ -1375,6 +1389,39 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   box-shadow: var(--kitgenix-shadow-sm);
 }
 
+/* Groups a labelled .kitgenix-table-wrap under a heading – e.g. each
+   category ("Environment", "Storage"...) in the System Status report. */
+.kitgenix-status-section {
+  margin-bottom: 20px;
+}
+
+.kitgenix-status-section:last-child {
+  margin-bottom: 0;
+}
+
+.kitgenix-status-section-title {
+  margin: 0 0 8px;
+  font-family: var(--kitgenix-font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kitgenix-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Key/value report (System Status): keep the table full-width like every
+   other .kitgenix-table, but use a fixed label column so label + value sit
+   together on the left instead of each <table> resizing its own columns to
+   fit its own longest label (which pushed values to a different x per
+   section) or spreading the value out to a percentage-based column. */
+.kitgenix-status-table {
+  table-layout: fixed;
+}
+
+.kitgenix-status-table th {
+  width: 240px;
+}
+
 .kitgenix-table {
   width: 100%;
   border-collapse: collapse;
@@ -1408,11 +1455,27 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   vertical-align: middle;
 }
 
-.kitgenix-table tbody tr:last-child td {
+/* Row-header cells (<th scope="row">) – e.g. the System Status report – would
+   otherwise fall back to the browser's bold/centered default th styling.
+   No default width here: .kitgenix-status-table th sets a fixed width for
+   that report, and (being a single-class selector) would lose a specificity
+   fight against a width declared on this two-element selector. */
+.kitgenix-table tbody th {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--kitgenix-border-subtle);
+  font-family: var(--kitgenix-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kitgenix-text-color);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.kitgenix-table tbody tr:last-child :is(th, td) {
   border-bottom: none;
 }
 
-.kitgenix-table tbody tr:hover td {
+.kitgenix-table tbody tr:hover :is(th, td) {
   background: var(--kitgenix-bg-light);
 }
 
@@ -1553,7 +1616,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   gap: 10px;
 }
 
-/* Client-side table pagination — injected after a .kitgenix-table-wrap by
+/* Client-side table pagination – injected after a .kitgenix-table-wrap by
    bindTablePagination() in kitgenix-admin-components.js when that wrap
    carries data-kitgenix-table-paginate. Hidden by the script itself when
    the row count doesn't exceed one page. */
@@ -1795,7 +1858,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 
 /* ═══════════════════════════════════════
    MODAL / DIALOG
-   Toggled via data-kitgenix-modal-target / data-kitgenix-modal-close — see
+   Toggled via data-kitgenix-modal-target / data-kitgenix-modal-close – see
    kitgenix-admin-components.js.
 ═══════════════════════════════════════ */
 
@@ -2183,6 +2246,17 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   justify-content: space-between;
 }
 
+/* Stacks buttons full-width, one per row (e.g. the sidebar "Need Help?" card). */
+.kitgenix-button-group-stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.kitgenix-button-group-stack > .button {
+  width: 100%;
+  text-align: center;
+}
+
 /* ═══════════════════════════════════════
    TOOLTIP
    Pure-CSS hover/focus tooltip. Put the tip text in data-kitgenix-tooltip.
@@ -2264,7 +2338,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 /* ═══════════════════════════════════════
    TOAST / INLINE SAVE CONFIRMATION
    Created and managed by window.KitgenixAdminUI.toast(message, type) in
-   kitgenix-admin-components.js — no markup needed, the region is injected
+   kitgenix-admin-components.js – no markup needed, the region is injected
    automatically on first use.
 ═══════════════════════════════════════ */
 
@@ -2326,125 +2400,13 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 }
 
 /* ═══════════════════════════════════════
-   SUPPORT PAGE
-   The condensed "Support" tab: a gradient hero card, a chip grid summarizing
-   what donations fund, and an action-tile grid for the free ways to help
-   (docs, reviews, community). Shared markup across every Kitgenix plugin.
+   SHARED GRID/TILE COMPONENTS
+   Chip grid and action-tile grid – reused by several tabs beyond Support
+   (stat summaries, "free ways to help" tiles, etc). Shared across every
+   Kitgenix plugin.
 ═══════════════════════════════════════ */
 
-.kitgenix-support-hero {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--kitgenix-brand-dark) 0%, var(--kitgenix-brand) 55%, var(--kitgenix-brand-electric) 100%);
-  border-color: transparent;
-}
-
-.kitgenix-support-hero::before,
-.kitgenix-support-hero::after {
-  content: '';
-  position: absolute;
-  border-radius: 999px;
-  pointer-events: none;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.28), transparent 70%);
-}
-
-.kitgenix-support-hero::before {
-  width: 340px;
-  height: 340px;
-  top: -160px;
-  right: -80px;
-}
-
-.kitgenix-support-hero::after {
-  width: 220px;
-  height: 220px;
-  bottom: -140px;
-  left: -60px;
-  opacity: 0.6;
-}
-
-.kitgenix-support-hero > * {
-  position: relative;
-}
-
-.kitgenix-support-hero .kitgenix-card-icon {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-}
-
-.kitgenix-support-hero .kitgenix-card-head-text h2 {
-  color: #fff;
-}
-
-.kitgenix-support-hero .kitgenix-badge.brand {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-}
-
-.kitgenix-support-hero .kitgenix-card-body,
-.kitgenix-support-hero .kitgenix-card-body p {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.kitgenix-support-hero .kitgenix-setting-row-desc {
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.kitgenix-support-hero .button-secondary {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.5);
-  color: #fff;
-}
-
-.kitgenix-support-hero .button-secondary:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: #fff;
-}
-
-/* Collapsible "choose a monthly amount" tucked under the primary CTAs so
-   the six Stripe tiers don't have to sit on-screen as separate buttons. */
-.kitgenix-support-amounts {
-  margin-top: 12px;
-}
-
-.kitgenix-support-amounts summary {
-  cursor: pointer;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  list-style: none;
-}
-
-.kitgenix-support-amounts summary::-webkit-details-marker {
-  display: none;
-}
-
-.kitgenix-support-amounts summary::before {
-  content: '▸';
-  display: inline-block;
-  margin-right: 6px;
-  transition: transform var(--kitgenix-transition);
-}
-
-.kitgenix-support-amounts[open] summary::before {
-  transform: rotate(90deg);
-}
-
-.kitgenix-support-amounts .kitgenix-button-group {
-  margin-top: 10px;
-}
-
-.kitgenix-support-amounts .button {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #fff;
-}
-
-.kitgenix-support-amounts .button:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Chip grid — compact icon + label pills, replaces long bulleted lists. */
+/* Chip grid – compact icon + label pills, replaces long bulleted lists. */
 .kitgenix-chip-grid {
   display: flex;
   flex-wrap: wrap;
@@ -2478,7 +2440,7 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
   flex-shrink: 0;
 }
 
-/* Action-tile grid — the free ways to help (docs, reviews, community),
+/* Action-tile grid – the free ways to help (docs, reviews, community),
    collapsed from several stacked cards into one grid of equal tiles. */
 .kitgenix-action-grid {
   display: grid;
@@ -2533,12 +2495,172 @@ html #wpbody-content > .wrap.kitgenix-admin-app,
 }
 
 /* ═══════════════════════════════════════
+   SUPPORT PAGE – HERO CARD
+   A centered "support us" hero: icon badge, eyebrow, heading, body copy,
+   one prominent donate button, and a reassurance caption – plus a slim,
+   centered row of free ways to help underneath. Shared markup across
+   every Kitgenix plugin.
+═══════════════════════════════════════ */
+
+.kitgenix-support-hero {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 48px 40px 36px;
+}
+
+.kitgenix-support-hero-inner {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.kitgenix-support-hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--kitgenix-danger-light);
+  color: var(--kitgenix-danger);
+  margin: 0 auto 18px;
+}
+
+.kitgenix-support-hero-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.kitgenix-support-hero-eyebrow {
+  font-family: var(--kitgenix-font-heading);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kitgenix-brand);
+  margin: 0 0 10px;
+}
+
+.kitgenix-support-hero h2 {
+  font-family: var(--kitgenix-font-heading);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.25;
+  color: var(--kitgenix-text-color);
+  margin: 0 0 14px;
+}
+
+.kitgenix-support-hero-body {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--kitgenix-text-muted);
+  margin: 0 auto 28px;
+  max-width: 94%;
+}
+
+.kitgenix-support-hero-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  box-sizing: border-box;
+  border-radius: var(--kitgenix-radius-md);
+  background: linear-gradient(135deg, var(--kitgenix-brand), var(--kitgenix-brand-dark));
+  color: #fff !important;
+  font-family: var(--kitgenix-font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--kitgenix-shadow-sm);
+  border: none;
+  cursor: pointer;
+  transition: filter var(--kitgenix-transition), box-shadow var(--kitgenix-transition), transform var(--kitgenix-transition);
+}
+
+.kitgenix-support-hero-button svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.kitgenix-support-hero-button:hover,
+.kitgenix-support-hero-button:focus-visible {
+  filter: brightness(1.08);
+  box-shadow: var(--kitgenix-shadow-md);
+  transform: translateY(-1px);
+  color: #fff !important;
+  outline: none;
+}
+
+.kitgenix-support-hero-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--kitgenix-text-muted);
+  margin: 16px 0 0;
+}
+
+.kitgenix-support-hero-caption svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.kitgenix-support-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 36px;
+  padding-top: 22px;
+  border-top: 1px solid var(--kitgenix-border-subtle);
+  width: 100%;
+}
+
+.kitgenix-support-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--kitgenix-text-muted);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--kitgenix-transition);
+}
+
+.kitgenix-support-link svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.kitgenix-support-link:hover,
+.kitgenix-support-link:focus-visible {
+  color: var(--kitgenix-brand);
+  outline: none;
+}
+
+/* ═══════════════════════════════════════
    PLAIN SECTION SUBHEADING
-   A quieter alternative to .kitgenix-card-head's icon+h2 pattern — a bold
+   A quieter alternative to .kitgenix-card-head's icon+h2 pattern – a bold
    label with a one-line .description underneath, no icon square. Used by
    the Log tab across every Kitgenix plugin (originally CAPTCHA Turnstile's
    diagnostic-section header style). Give the heading element BOTH an h2/h3
-   tag and this class — it isn't nested under .kitgenix-card-head-text, so
+   tag and this class – it isn't nested under .kitgenix-card-head-text, so
    it never collides with that pattern's own heading rule.
 ═══════════════════════════════════════ */
 

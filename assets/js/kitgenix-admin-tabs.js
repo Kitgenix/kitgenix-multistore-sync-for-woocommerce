@@ -1,4 +1,4 @@
-/* Kitgenix Admin UI — Shared topbar, tabs & search controller.
+/* Kitgenix Admin UI – Shared topbar, tabs & search controller.
    Keep this file identical between plugins to ensure consistent UI/UX.
 */
 

@@ -1,4 +1,4 @@
-# Kitgenix MultiStore 1.0.0 — Feature Parity
+# Kitgenix MultiStore 1.0.0 – Feature Parity
 
 Version 1.0.0 is the feature-parity release built after a direct code comparison with WooMultistore 5.5.0. Kitgenix keeps its own signed event/ledger architecture rather than reproducing WooMultistore's transport implementation.
 
@@ -35,4 +35,16 @@ Dedicated/generic adapters cover WooCommerce Square inventory, Rank Math, Yoast,
 
 ## Safety defaults
 
-The following remain disabled by default: customer snapshot sync, review sync, shared remote media, Control-Store WooCommerce order import, placeholder cloning, network My Account history, network sequential order numbering, remote payment-gateway refunds and non-production outbound writes.
+The following remain disabled by default: customer snapshot sync, review sync, shared remote media, Control-Store WooCommerce order import, placeholder cloning, network My Account history, network sequential order numbering, remote payment-gateway refunds, non-production outbound writes, and full data removal on uninstall (a dedicated setting or a `KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_REMOVE_DATA` wp-config constant must both be explicitly opted in – actual WooCommerce products/orders are never deleted by this plugin either way).
+
+## Price rules
+
+Per connected store, choose a percentage, fixed amount, or exchange-multiplier adjustment; an optional rounding strategy (nearest whole number, nearest 0.50, or charm pricing at X.95/X.99); and how the sale price should be handled (apply the same rule, preserve the original discount percentage, pass the source sale price through unadjusted, or never send a sale price). Every calculation is always derived fresh from the source product's current price at dispatch time, so re-syncing a product never compounds the adjustment – a manual per-product/per-store price override still always wins over the automatic rule.
+
+## Connection health
+
+The Stores screen distinguishes five connection states rather than a single active/offline flag: Connected, Warning (reachable, but the peer is running an outdated WordPress/WooCommerce version or has no Action Scheduler), Offline (unreachable), Authentication Failed (reachable but the peer rejected the signed request), and Version Incompatible (a Kitgenix MultiStore major-version mismatch between the two stores). Each connected store also shows its Kitgenix plugin version, WordPress version, WooCommerce version, store ID, and last contact time.
+
+## Bulk operations
+
+A resumable Bulk Operations panel (Sync Centre) drives full product syncs and full inventory reconciliation in small batches so neither can time out on a large catalogue or network. Supports an optional dry run (reports what would happen – drift found, items excluded – without changing or sending anything), pause/resume/stop, and a persisted progress report (processed/total, repaired, excluded, drift, and the last errors encountered). The same engine is available from WP-CLI (`wp kitgenix-multistore-sync-for-woocommerce bulk-sync` / `bulk-reconcile`, both with `--dry-run`, and `bulk-sync --products=<ids>` for a specific set of products) with a live progress bar. The existing automatic hourly background reconciliation is unaffected. Per-product/per-store exclusions (sync disabled, or explicit target stores/groups) are respected throughout – reconciliation never re-adds a store a product was deliberately excluded from.

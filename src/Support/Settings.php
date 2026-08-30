@@ -19,6 +19,7 @@ final class Settings {
             'media_mode' => 'local_copy',
             'sync_reviews' => 'no',
             'review_direction' => 'network',
+            'sync_custom_tabs' => 'no',
             'sync_rest_products' => 'yes',
             'sku_assisted_linking' => 'yes',
             'checkout_inventory_validation' => 'yes',
@@ -29,6 +30,7 @@ final class Settings {
             'request_timeout' => 20,
             'log_retention_days' => 30,
             'allow_remote_gateway_refunds' => 'no',
+            'remove_data_on_uninstall' => 'no',
             'store_groups' => array(),
             'store_pricing_rules' => array(),
             'store_policies' => array(),
@@ -78,20 +80,43 @@ final class Settings {
         foreach ( $rules as $uuid => $rule ) {
             $uuid = sanitize_text_field( (string) $uuid );
             if ( ! wp_is_uuid( $uuid ) || ! is_array( $rule ) ) continue;
-            $percentage = is_numeric( $rule['percentage'] ?? null ) ? (float) $rule['percentage'] : 0.0;
-            $out[ $uuid ] = array(
-                'enabled' => 'yes' === (string) ( $rule['enabled'] ?? 'no' ) ? 'yes' : 'no',
-                'percentage' => max( -100.0, min( 1000.0, $percentage ) ),
-            );
+            $out[ $uuid ] = $this->sanitize_pricing_rule( $rule );
         }
         return $out;
     }
 
-    public function pricing_rule( string $uuid ): array {
-        return $this->pricing_rules()[ $uuid ] ?? array( 'enabled' => 'no', 'percentage' => 0.0 );
+    /** @param array<string,mixed> $rule */
+    private function sanitize_pricing_rule( array $rule ): array {
+        $percentage   = is_numeric( $rule['percentage'] ?? null ) ? (float) $rule['percentage'] : 0.0;
+        $fixed_amount = is_numeric( $rule['fixed_amount'] ?? null ) ? (float) $rule['fixed_amount'] : 0.0;
+        $multiplier   = is_numeric( $rule['multiplier'] ?? null ) ? (float) $rule['multiplier'] : 1.0;
+        $mode         = \Kitgenix\MultiStore\Pricing\PriceCalculator::mode( $rule );
+        $rounding     = \Kitgenix\MultiStore\Pricing\PriceCalculator::rounding( $rule );
+        $sale_mode    = \Kitgenix\MultiStore\Pricing\PriceCalculator::sale_mode( $rule );
+        return array(
+            'enabled'      => 'yes' === (string) ( $rule['enabled'] ?? 'no' ) ? 'yes' : 'no',
+            'mode'         => $mode,
+            'percentage'   => max( -100.0, min( 1000.0, $percentage ) ),
+            'fixed_amount' => max( -1000000.0, min( 1000000.0, $fixed_amount ) ),
+            'multiplier'   => max( 0.0, min( 100.0, $multiplier ) ),
+            'rounding'     => $rounding,
+            'sale_mode'    => $sale_mode,
+        );
     }
 
-    public function save_pricing_rules( array $rules ): void { $this->set( array( 'store_pricing_rules' => $rules ) ); }
+    public function pricing_rule( string $uuid ): array {
+        return $this->pricing_rules()[ $uuid ] ?? $this->sanitize_pricing_rule( array() );
+    }
+
+    public function save_pricing_rules( array $rules ): void {
+        $clean = array();
+        foreach ( $rules as $uuid => $rule ) {
+            $uuid = sanitize_text_field( (string) $uuid );
+            if ( ! wp_is_uuid( $uuid ) || ! is_array( $rule ) ) continue;
+            $clean[ $uuid ] = $this->sanitize_pricing_rule( $rule );
+        }
+        $this->set( array( 'store_pricing_rules' => $clean ) );
+    }
 
     public function policies(): array {
         $stored = (array) $this->get( 'store_policies', array() );
@@ -129,6 +154,7 @@ final class Settings {
             'custom_taxonomies' => 'Custom taxonomies', 'attributes' => 'Attributes & terms', 'images' => 'Images & image metadata',
             'linked_products' => 'Upsells, cross-sells & grouped children', 'variations' => 'Variations', 'seo' => 'SEO metadata',
             'custom_meta' => 'Custom metadata', 'language' => 'WPML / Polylang language', 'integration_data' => 'Integration-specific data',
+            'custom_tabs' => 'Custom tabs (Kitgenix Custom Tabs)', 'custom_tab_documents' => 'Custom tab documents (Kitgenix Document Manager)',
         );
     }
 

@@ -26,7 +26,7 @@ final class Auth {
         if ( get_transient( $nonce_key ) ) { return $this->reject( 'kitgenix_multistore_sync_for_woocommerce_auth_replay', 'Request nonce has already been used.', $store_uuid, $request ); }
         $body  = $request->get_body();
         if ( '' === $body ) { $body = '{}'; }
-        $route = preg_replace( '#^/kitgenix-multistore/v1#', '', $request->get_route() );
+        $route = preg_replace( '#^/kitgenix-multistore-sync-for-woocommerce/v1#', '', $request->get_route() );
         if ( ! Signer::verify( $signature, $secret, $request->get_method(), $route, $timestamp, $nonce, $body ) ) {
             return $this->reject( 'kitgenix_multistore_sync_for_woocommerce_auth_signature', 'Request signature is invalid.', $store_uuid, $request );
         }

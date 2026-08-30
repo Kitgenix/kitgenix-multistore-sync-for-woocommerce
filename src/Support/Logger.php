@@ -1,6 +1,11 @@
 <?php
 namespace Kitgenix\MultiStore\Support;
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+// -- Every query here targets this plugin's own fixed log table name built from
+// $wpdb->prefix, never user input, via $wpdb->insert() or $wpdb->prepare(); this
+// is a plugin-owned custom table with no WordPress core object-cache group, so a
+// direct $wpdb call is the only way to interact with it.
 final class Logger {
     public function log( string $level, string $message, array $context = array() ): void {
         global $wpdb;
@@ -16,7 +21,7 @@ final class Logger {
             array( '%s', '%s', '%s', '%s' )
         );
         if ( function_exists( 'wc_get_logger' ) && in_array( $level, array( 'error', 'critical' ), true ) ) {
-            wc_get_logger()->log( $level, $message, array_merge( array( 'source' => 'kitgenix-multistore' ), $context ) );
+            wc_get_logger()->log( $level, $message, array_merge( array( 'source' => 'kitgenix-multistore-sync-for-woocommerce' ), $context ) );
         }
     }
 

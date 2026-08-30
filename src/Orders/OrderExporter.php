@@ -17,9 +17,10 @@ final class OrderExporter {
         $rows = $this->flatten( $raw );
         $format = 'xlsx' === $format ? 'xlsx' : 'csv'; $filename = 'kitgenix-network-orders-' . gmdate( 'Y-m-d-His' ) . '.' . $format;
         nocache_headers(); header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-        if ( 'csv' === $format ) { header( 'Content-Type: text/csv; charset=utf-8' ); $out = fopen( 'php://output', 'wb' ); fwrite( $out, "\xEF\xBB\xBF" ); if ( $rows ) fputcsv( $out, array_keys( $rows[0] ) ); foreach ( $rows as $row ) fputcsv( $out, $row ); fclose( $out ); exit; }
+        if ( 'csv' === $format ) { header( 'Content-Type: text/csv; charset=utf-8' ); $out = fopen( 'php://output', 'wb' ); fwrite( $out, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- writing to a php://output stream handle, not a real file.
+            if ( $rows ) fputcsv( $out, array_keys( $rows[0] ) ); foreach ( $rows as $row ) fputcsv( $out, $row ); fclose( $out ); exit; } // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- closing a php://output stream handle, not a real file.
         if ( ! class_exists( '\\ZipArchive' ) ) wp_die( 'PHP ZipArchive is required for XLSX exports.' );
-        header( 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ); echo $this->xlsx( $rows ); exit;
+        header( 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ); echo $this->xlsx( $rows ); exit; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- xlsx() returns raw binary XLSX (zip) file bytes for direct download, not HTML; escaping would corrupt the file.
     }
 
     private function flatten( array $rows ): array {
@@ -34,7 +35,7 @@ final class OrderExporter {
         $zip->addFromString( '_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' );
         $zip->addFromString( 'xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Orders" sheetId="1" r:id="rId1"/></sheets></workbook>' );
         $zip->addFromString( 'xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>' );
-        $zip->addFromString( 'xl/worksheets/sheet1.xml', $sheet ); $zip->close(); $bytes = file_get_contents( $tmp ); @unlink( $tmp ); return (string) $bytes;
+        $zip->addFromString( 'xl/worksheets/sheet1.xml', $sheet ); $zip->close(); $bytes = file_get_contents( $tmp ); wp_delete_file( $tmp ); return (string) $bytes;
     }
 
     private function safe_cell( mixed $value ): string {

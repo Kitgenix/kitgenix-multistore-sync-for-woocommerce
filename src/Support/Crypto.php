@@ -3,7 +3,7 @@ namespace Kitgenix\MultiStore\Support;
 
 final class Crypto {
     private static function key(): string {
-        $material = ( defined( 'AUTH_KEY' ) ? AUTH_KEY : '' ) . '|' . ( defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : '' ) . '|kitgenix-multistore';
+        $material = ( defined( 'AUTH_KEY' ) ? AUTH_KEY : '' ) . '|' . ( defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : '' ) . '|kitgenix-multistore-sync-for-woocommerce';
         return hash( 'sha256', $material, true );
     }
 

@@ -1,6 +1,13 @@
 <?php
 namespace Kitgenix\MultiStore\Repository;
 
+// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+// -- Every query here interpolates only this class's own fixed, developer-controlled table-name
+// property (set once in the constructor from $wpdb->prefix, never from user input); every actual
+// value is passed through $wpdb->prepare() with %s/%d/%f placeholders. This is a plugin-owned
+// custom table with no WordPress core object-cache group; a direct $wpdb call is the only way
+// to interact with it.
+
 use Kitgenix\MultiStore\Support\Crypto;
 use Kitgenix\MultiStore\Support\Environment;
 use Kitgenix\MultiStore\Support\Uuid;
@@ -96,9 +103,17 @@ final class StoreRepository {
         return is_array( $caps ) ? $caps : array();
     }
 
+    /**
+     * Recognised connection-health statuses, shown distinctly in the admin
+     * Stores view: Connected (active), Warning, Offline, Authentication
+     * Failed, and Version Incompatible – plus the admin-controlled Disabled
+     * (paused) state, which is never set by a health check.
+     */
+    public const STATUSES = array( 'active', 'warning', 'offline', 'auth_failed', 'version_incompatible', 'disabled', 'unknown' );
+
     public function set_status( string $uuid, string $status ): void {
         global $wpdb;
-        $status = in_array( $status, array( 'active','offline','disabled','unknown' ), true ) ? $status : 'unknown';
+        $status = in_array( $status, self::STATUSES, true ) ? $status : 'unknown';
         $wpdb->update( $this->table, array( 'status' => $status, 'updated_at' => current_time( 'mysql', true ) ), array( 'uuid' => $uuid ) );
     }
 

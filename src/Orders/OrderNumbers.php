@@ -26,7 +26,7 @@ final class OrderNumbers {
             $this->logger->warning( 'Could not allocate network order number.', array( 'order_id' => $order_id, 'attempt' => $attempts, 'error' => $number->get_error_message() ) );
             if ( $attempts < 8 ) {
                 $delay = min( 3600, 60 * ( 2 ** max( 0, $attempts - 1 ) ) );
-                if ( function_exists( 'as_schedule_single_action' ) ) as_schedule_single_action( time() + $delay, 'kitgenix_multistore_sync_for_woocommerce_assign_order_number', array( $order_id ), 'kitgenix-multistore', false );
+                if ( function_exists( 'as_schedule_single_action' ) ) as_schedule_single_action( time() + $delay, 'kitgenix_multistore_sync_for_woocommerce_assign_order_number', array( $order_id ), 'kitgenix-multistore-sync-for-woocommerce', false );
                 else wp_schedule_single_event( time() + $delay, 'kitgenix_multistore_sync_for_woocommerce_assign_order_number', array( $order_id ) );
             }
             return;
@@ -41,12 +41,14 @@ final class OrderNumbers {
 
     public function next_number(): string {
         global $wpdb; $table = $wpdb->prefix . 'kitgenix_multistore_sync_for_woocommerce_sequences'; $start = max( 1, (int) $this->settings->get( 'order_number_start', 1000 ) );
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is a fixed, developer-controlled table name built from $wpdb->prefix, not user input; this is a plugin-owned custom table with no WordPress core object-cache group, so a direct $wpdb call is the only way to interact with it (and this sequence counter must read the current row under FOR UPDATE, which caching would defeat anyway).
         $wpdb->query( 'START TRANSACTION' );
         try {
             $wpdb->query( $wpdb->prepare( "INSERT INTO {$table} (sequence_key,current_value,updated_at) VALUES ('orders',%d,%s) ON DUPLICATE KEY UPDATE current_value=LAST_INSERT_ID(current_value+1),updated_at=VALUES(updated_at)", $start, current_time( 'mysql', true ) ) );
             $value = (int) $wpdb->get_var( "SELECT current_value FROM {$table} WHERE sequence_key='orders' FOR UPDATE" );
             $wpdb->query( 'COMMIT' );
         } catch ( \Throwable $e ) { $wpdb->query( 'ROLLBACK' ); throw $e; }
+        // phpcs:enable
         return sanitize_text_field( (string) $this->settings->get( 'order_number_prefix', '' ) ) . $value;
     }
 

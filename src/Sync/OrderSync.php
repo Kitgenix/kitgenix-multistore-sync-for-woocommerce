@@ -49,7 +49,7 @@ final class OrderSync {
 
     public function schedule_backfill( int $days = 90 ): int {
         $days=max(1,min(3650,$days));$page=1;$count=0;$after=gmdate('Y-m-d',time()-DAY_IN_SECONDS*$days);
-        do{$result=wc_get_orders(array('limit'=>100,'page'=>$page,'paginate'=>true,'return'=>'ids','date_created'=>'>='.$after,'orderby'=>'date','order'=>'ASC'));$ids=is_object($result)?(array)$result->orders:array();foreach($ids as$id){if(function_exists('as_enqueue_async_action'))as_enqueue_async_action('kitgenix_multistore_sync_for_woocommerce_index_order_job',array((int)$id),'kitgenix-multistore',false);else wp_schedule_single_event(time()+$count,'kitgenix_multistore_sync_for_woocommerce_index_order_job',array((int)$id));$count++;}$page++;$max=is_object($result)?(int)$result->max_num_pages:0;}while($ids&&$page<=$max);return$count;
+        do{$result=wc_get_orders(array('limit'=>100,'page'=>$page,'paginate'=>true,'return'=>'ids','date_created'=>'>='.$after,'orderby'=>'date','order'=>'ASC'));$ids=is_object($result)?(array)$result->orders:array();foreach($ids as$id){if(function_exists('as_enqueue_async_action'))as_enqueue_async_action('kitgenix_multistore_sync_for_woocommerce_index_order_job',array((int)$id),'kitgenix-multistore-sync-for-woocommerce',false);else wp_schedule_single_event(time()+$count,'kitgenix_multistore_sync_for_woocommerce_index_order_job',array((int)$id));$count++;}$page++;$max=is_object($result)?(int)$result->max_num_pages:0;}while($ids&&$page<=$max);return$count;
     }
 
     public function sync_now( int $order_id ): array|\WP_Error {
@@ -105,7 +105,7 @@ final class OrderSync {
         $order = $this->resolve_local_order( $network_id, $order_id );
         if ( is_wp_error( $order ) ) return $order;
         if ( ! array_key_exists( 'wc-' . $status, wc_get_order_statuses() ) ) return new \WP_Error( 'kitgenix_multistore_sync_for_woocommerce_order_status', 'Invalid order status.', array( 'status' => 400 ) );
-        Context::remote( fn() => $order->update_status( $status, __( 'Status updated from Kitgenix MultiStore control store.', 'kitgenix-multistore' ), false ) );
+        Context::remote( fn() => $order->update_status( $status, __( 'Status updated from Kitgenix MultiStore control store.', 'kitgenix-multistore-sync-for-woocommerce' ), false ) );
         $this->queue( $order->get_id() );
         return $order->get_id();
     }

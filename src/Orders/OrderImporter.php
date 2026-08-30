@@ -35,7 +35,7 @@ final class OrderImporter {
         $existing_order = $existing ? wc_get_order( $existing ) : false;
 
         return Context::remote( function() use ( $payload, $source_store, $network, $existing_order ) {
-            $order = $existing_order ?: wc_create_order( array( 'status' => 'pending', 'created_via' => 'kitgenix-multistore' ) );
+            $order = $existing_order ?: wc_create_order( array( 'status' => 'pending', 'created_via' => 'kitgenix-multistore-sync-for-woocommerce' ) );
             if ( is_wp_error( $order ) ) return $order;
             if ( ! $order instanceof \WC_Order ) return new \WP_Error( 'kitgenix_multistore_sync_for_woocommerce_import_order_create', 'WooCommerce could not create the imported order.' );
 

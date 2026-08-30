@@ -25,3 +25,9 @@ Remote Kitgenix writes are excluded through the normal remote-sync context guard
 ## Important
 
 If Square is configured as the system of record in WooCommerce Square, a Square inventory change must first reach the UK WooCommerce product. Once WooCommerce saves the new quantity, Kitgenix can distribute it. Kitgenix does not call Square's API directly and does not store Square API credentials.
+
+## Order-driven stock restoration (refunds, and WooCommerce 11.0 failed orders)
+
+WooCommerce restores previously-reduced stock in two situations, both firing the core `woocommerce_restore_order_stock` hook: a refund with "restock items" checked, and – new in WooCommerce 11.0 – an order transitioning to **Failed** status via `wc_maybe_increase_stock_levels()`.
+
+Kitgenix listens to this hook directly on the Control Store (`InventorySync::after_stock_restored()`), and deliberately does **not** gate on the usual remote-sync context guard. That guard exists so `OrderSync::apply_status()`/`apply_refund()` don't re-queue the same order twice for outbound sync – but it previously had the side effect of also silently suppressing the *inventory* consequences of a restoration triggered through those code paths, meaning restored stock could be applied locally in WooCommerce but never reach the authoritative network ledger or connected stores. This handler closes that gap: it always captures the resulting quantity as an authoritative set, de-duplicated against the standard `*_set_stock` hook path so a restoration is never double-counted.

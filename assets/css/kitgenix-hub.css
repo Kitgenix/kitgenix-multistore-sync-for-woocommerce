@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   Kitgenix Hub — plugin discovery grid (admin.php?page=kitgenix)
+   Kitgenix Hub – plugin discovery grid (admin.php?page=kitgenix)
    Keep this file identical between plugins to ensure consistent UI/UX.
    Consumes the same --kitgenix-* tokens as kitgenix-admin-ui.css (loaded
    alongside this file on every page that enqueues it) so the Hub reads as
@@ -9,7 +9,7 @@
    radius scale, 4/8/12/16/24/32/48/64 spacing scale).
 ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* Content-centering shell for everything below the header — same pattern
+/* Content-centering shell for everything below the header – same pattern
    as .kitgenix-settings-layout on every plugin's own settings screen (the
    outer .wrap.kitgenix-admin-app is the edge-to-edge canvas; this is just
    the readable-width column sitting inside it). */
@@ -33,7 +33,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Header — same sticky full-bleed topbar treatment as every plugin's own
+/* Header – same sticky full-bleed topbar treatment as every plugin's own
    settings screen (.kitgenix-topbar in kitgenix-admin-ui.css): it sits
    outside .kitgenix-hub-wrap so it spans the full edge-to-edge canvas
    instead of being boxed in at the page-shell width. */
@@ -147,7 +147,7 @@
   align-items: stretch;
 }
 
-/* Extends the shared .kitgenix-card (background/border/radius/shadow) —
+/* Extends the shared .kitgenix-card (background/border/radius/shadow) –
    only the parts a media banner + footer actions row need change. */
 .kitgenix-hub .kitgenix-card {
   display: flex;
@@ -229,7 +229,7 @@
   line-height: 1.6;
 }
 
-/* Status badges — same tokens as .kitgenix-badge.success/.warning
+/* Status badges – same tokens as .kitgenix-badge.success/.warning
    elsewhere in the app (see kitgenix-admin-ui.css), just named for what
    they mean on this page (an installed-and-active vs. inactive plugin). */
 .kitgenix-hub .kitgenix-badge.ok {

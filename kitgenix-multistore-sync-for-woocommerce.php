@@ -1,26 +1,27 @@
 <?php
 /**
- * Plugin Name: Kitgenix MultiStore for WooCommerce
+ * Plugin Name: Kitgenix MultiStore Sync for WooCommerce
  * Plugin URI: https://kitgenix.com/
  * Description: Secure, queue-backed multi-store product, inventory, order, customer and coupon synchronisation for WooCommerce.
- * Version: 2.0.0
+ * Version: 1.0.0
  * Author: Kitgenix
  * Author URI: https://kitgenix.com/
- * Text Domain: kitgenix-multistore
+ * Text Domain: kitgenix-multistore-sync-for-woocommerce
  * Domain Path: /languages
  * Requires at least: 6.8
+ * Tested up to: 7.1
  * Requires PHP: 8.1
  * Requires Plugins: woocommerce
  * WC requires at least: 10.0
- * WC tested up to: 11.0.1
+ * WC tested up to: 11.0.0
  * Network: true
  * License: GPL-2.0-or-later
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION', '2.0.0' );
-define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_DB_VERSION', '1.0.0.0' );
+define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION', '1.0.0' );
+define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_DB_VERSION', '1.0.0' );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_FILE', __FILE__ );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_URL', plugin_dir_url( __FILE__ ) );
@@ -75,8 +76,8 @@ if ( ! function_exists( 'kitgenix_ensure_admin_menu' ) ) {
         $icon_url = kitgenix_get_admin_menu_icon( __FILE__ );
 
         add_menu_page(
-            __( 'Kitgenix', 'kitgenix-multistore' ),
-            __( 'Kitgenix', 'kitgenix-multistore' ),
+            __( 'Kitgenix', 'kitgenix-multistore-sync-for-woocommerce' ),
+            __( 'Kitgenix', 'kitgenix-multistore-sync-for-woocommerce' ),
             $capability,
             $slug,
             'kitgenix_render_admin_page',
@@ -346,7 +347,7 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
     function kitgenix_render_admin_page(): void {
         $allowed = current_user_can( 'manage_options' ) || ( class_exists( 'WooCommerce' ) && current_user_can( 'manage_woocommerce' ) );
         if ( ! $allowed ) {
-            wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'kitgenix-multistore' ) );
+            wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'kitgenix-multistore-sync-for-woocommerce' ) );
         }
 
         if ( ! function_exists( 'is_plugin_active' ) ) {
@@ -358,75 +359,75 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
         $plugins = [
             [
                 'id'       => 'multistore',
-                'name'     => __( 'MultiStore for WooCommerce', 'kitgenix-multistore' ),
+                'name'     => __( 'MultiStore for WooCommerce', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-multistore-sync-for-woocommerce',
                 'file'     => 'kitgenix-multistore-sync-for-woocommerce/kitgenix-multistore-sync-for-woocommerce.php',
-                'page'     => 'kitgenix-multistore',
-                'requires' => __( 'Sync WooCommerce products, prices, media, and metadata between multiple stores with a secure master-child architecture.', 'kitgenix-multistore' ),
+                'page'     => 'kitgenix-multistore-sync-for-woocommerce',
+                'requires' => __( 'Sync WooCommerce products, prices, media, and metadata between multiple stores with a secure master-child architecture.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'turnstile',
-                'name'     => __( 'CAPTCHA for Cloudflare Turnstile', 'kitgenix-multistore' ),
+                'name'     => __( 'CAPTCHA for Cloudflare Turnstile', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-captcha-for-cloudflare-turnstile',
                 'file'     => 'kitgenix-captcha-for-cloudflare-turnstile/kitgenix-captcha-for-cloudflare-turnstile.php',
                 'page'     => 'kitgenix-captcha-for-cloudflare-turnstile',
-                'requires' => __( 'Add Cloudflare Turnstile CAPTCHA to WordPress, WooCommerce, Elementor, and popular form plugins.', 'kitgenix-multistore' ),
+                'requires' => __( 'Add Cloudflare Turnstile CAPTCHA to WordPress, WooCommerce, Elementor, and popular form plugins.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'custom_tabs',
-                'name'     => __( 'Custom Tabs for WooCommerce', 'kitgenix-multistore' ),
+                'name'     => __( 'Custom Tabs for WooCommerce', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-custom-tabs-for-woocommerce',
                 'file'     => 'kitgenix-custom-tabs-for-woocommerce/kitgenix-custom-tabs-for-woocommerce.php',
                 'page'     => 'kitgenix-custom-tabs-for-woocommerce',
-                'requires' => __( 'Add custom WooCommerce product tabs with per-product content, global tabs, and lightweight controls.', 'kitgenix-multistore' ),
+                'requires' => __( 'Add custom WooCommerce product tabs with per-product content, global tabs, and lightweight controls.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'documents',
-                'name'     => __( 'Document Manager', 'kitgenix-multistore' ),
+                'name'     => __( 'Document Manager', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-document-manager',
                 'file'     => 'kitgenix-document-manager/kitgenix-document-manager.php',
                 'page'     => 'kitgenix-document-manager',
-                'requires' => __( 'Manage document downloads with stable links, version history, and private file access.', 'kitgenix-multistore' ),
+                'requires' => __( 'Manage document downloads with stable links, version history, and private file access.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'tracking',
-                'name'     => __( 'Order Tracking for WooCommerce', 'kitgenix-multistore' ),
+                'name'     => __( 'Order Tracking for WooCommerce', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-order-tracking-for-woocommerce',
                 'file'     => 'kitgenix-order-tracking-for-woocommerce/kitgenix-order-tracking-for-woocommerce.php',
                 'page'     => 'kitgenix-order-tracking-for-woocommerce-analytics',
-                'requires' => __( 'Add WooCommerce order tracking, multi-shipment support, email tracking links, and a public customer tracking page.', 'kitgenix-multistore' ),
+                'requires' => __( 'Add WooCommerce order tracking, multi-shipment support, email tracking links, and a public customer tracking page.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'pdf',
-                'name'     => __( 'PDF Invoicing for WooCommerce', 'kitgenix-multistore' ),
+                'name'     => __( 'PDF Invoicing for WooCommerce', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-pdf-invoicing-for-woocommerce',
                 'file'     => 'kitgenix-pdf-invoicing-for-woocommerce/kitgenix-pdf-invoicing-for-woocommerce.php',
                 'page'     => 'kitgenix-pdf-invoicing-settings',
-                'requires' => __( 'Generate WooCommerce PDF invoices, receipts, packing slips, and credit notes with secure downloads and configurable email attachments.', 'kitgenix-multistore' ),
+                'requires' => __( 'Generate WooCommerce PDF invoices, receipts, packing slips, and credit notes with secure downloads and configurable email attachments.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'stock',
-                'name'     => __( 'Stock Sync for WooCommerce', 'kitgenix-multistore' ),
+                'name'     => __( 'Stock Sync for WooCommerce', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-stock-sync-for-woocommerce',
                 'file'     => 'kitgenix-stock-sync-for-woocommerce/kitgenix-stock-sync-for-woocommerce.php',
                 'page'     => 'kitgenix-stock-sync-for-woocommerce',
-                'requires' => __( 'Sync WooCommerce stock between stores with secure master-child inventory updates and signed REST requests.', 'kitgenix-multistore' ),
+                'requires' => __( 'Sync WooCommerce stock between stores with secure master-child inventory updates and signed REST requests.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'image_optimizer',
-                'name'     => __( 'Image Optimizer', 'kitgenix-multistore' ),
+                'name'     => __( 'Image Optimizer', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-image-optimizer',
                 'file'     => 'kitgenix-image-optimizer/kitgenix-image-optimizer.php',
                 'page'     => 'kitgenix-image-optimizer',
-                'requires' => __( 'Optimize, compress, and resize images in your WordPress media library with automatic on-upload processing and bulk optimization tools.', 'kitgenix-multistore' ),
+                'requires' => __( 'Optimize, compress, and resize images in your WordPress media library with automatic on-upload processing and bulk optimization tools.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
             [
                 'id'       => 'affiliate',
-                'name'     => __( 'Affiliate Link Manager', 'kitgenix-multistore' ),
+                'name'     => __( 'Affiliate Link Manager', 'kitgenix-multistore-sync-for-woocommerce' ),
                 'slug'     => 'kitgenix-affiliate-link-manager',
                 'file'     => 'kitgenix-affiliate-link-manager/kitgenix-affiliate-link-manager.php',
                 'page'     => 'kitgenix-affiliate-link-manager',
-                'requires' => __( 'Manage affiliate short links, branded redirects, and click tracking from one WordPress dashboard.', 'kitgenix-multistore' ),
+                'requires' => __( 'Manage affiliate short links, branded redirects, and click tracking from one WordPress dashboard.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
         ];
 
@@ -445,12 +446,12 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
             . '<div class="kitgenix-hub-header">'
             . '<div class="kitgenix-hub-brand">'
             . '<span class="kitgenix-topbar-brand">'
-            . '<img class="kitgenix-hub-logo" src="' . esc_url( $logo_url ) . '" alt="' . esc_attr__( 'Kitgenix', 'kitgenix-multistore' ) . '" width="30" height="30" />'
+            . '<img class="kitgenix-hub-logo" src="' . esc_url( $logo_url ) . '" alt="' . esc_attr__( 'Kitgenix', 'kitgenix-multistore-sync-for-woocommerce' ) . '" width="30" height="30" />'
             . '</span>'
             . '<span class="kitgenix-topbar-divider" aria-hidden="true"></span>'
             . '<div class="kitgenix-hub-brand-copy">'
-            . '<h1 class="kitgenix-hub-title">' . esc_html__( 'Kitgenix', 'kitgenix-multistore' ) . '</h1>'
-            . '<p class="kitgenix-hub-description">' . esc_html__( 'Install, activate, open, and review Kitgenix plugins.', 'kitgenix-multistore' ) . '</p>'
+            . '<h1 class="kitgenix-hub-title">' . esc_html__( 'Kitgenix', 'kitgenix-multistore-sync-for-woocommerce' ) . '</h1>'
+            . '<p class="kitgenix-hub-description">' . esc_html__( 'Install, activate, open, and review Kitgenix plugins.', 'kitgenix-multistore-sync-for-woocommerce' ) . '</p>'
             . '</div>'
             . '</div>'
             . '<div class="kitgenix-hub-social-links">'
@@ -489,7 +490,7 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
                 $count = (int) $wporg_active_installs[ $slug ];
                 $count_text = function_exists( 'number_format_i18n' ) ? number_format_i18n( $count ) : (string) $count;
                 /* translators: %s is the number of active installs and may include a thousands separator, e.g. "1,234". The "+" suffix is literal. */
-                $installs_badge = '<span class="kitgenix-badge muted">' . esc_html( sprintf( __( '%s+ installs', 'kitgenix-multistore' ), $count_text ) ) . '</span>';
+                $installs_badge = '<span class="kitgenix-badge muted">' . esc_html( sprintf( __( '%s+ installs', 'kitgenix-multistore-sync-for-woocommerce' ), $count_text ) ) . '</span>';
             }
 
             $rating_badge = '';
@@ -498,16 +499,16 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
                 $stars = ( $rating_percent / 100 ) * 5;
                 $stars_text = function_exists( 'number_format_i18n' ) ? number_format_i18n( $stars, 1 ) : number_format( $stars, 1 );
                 /* translators: %s is the average rating out of 5 with one decimal place, e.g. "4.5". The star symbol (★) precedes the number. */
-                $rating_badge = '<span class="kitgenix-badge muted">' . esc_html( sprintf( __( '★ %s/5', 'kitgenix-multistore' ), $stars_text ) ) . '</span>';
+                $rating_badge = '<span class="kitgenix-badge muted">' . esc_html( sprintf( __( '★ %s/5', 'kitgenix-multistore-sync-for-woocommerce' ), $stars_text ) ) . '</span>';
             }
 
             $status_badge = '';
             if ( ! $installed ) {
-                $status_badge = '<span class="kitgenix-badge muted">' . esc_html__( 'Not installed', 'kitgenix-multistore' ) . '</span>';
+                $status_badge = '<span class="kitgenix-badge muted">' . esc_html__( 'Not installed', 'kitgenix-multistore-sync-for-woocommerce' ) . '</span>';
             } elseif ( $active ) {
-                $status_badge = '<span class="kitgenix-badge ok">' . esc_html__( 'Active', 'kitgenix-multistore' ) . '</span>';
+                $status_badge = '<span class="kitgenix-badge ok">' . esc_html__( 'Active', 'kitgenix-multistore-sync-for-woocommerce' ) . '</span>';
             } else {
-                $status_badge = '<span class="kitgenix-badge warn">' . esc_html__( 'Installed (Inactive)', 'kitgenix-multistore' ) . '</span>';
+                $status_badge = '<span class="kitgenix-badge warn">' . esc_html__( 'Installed (Inactive)', 'kitgenix-multistore-sync-for-woocommerce' ) . '</span>';
             }
 
             $card_media = '';
@@ -527,31 +528,31 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
                 } else {
                     $install_url = admin_url( 'plugin-install.php?s=' . rawurlencode( 'kitgenix' ) . '&tab=search&type=term' );
                 }
-                $actions .= '<a class="button button-primary" href="' . esc_url( $install_url ) . '">' . esc_html__( 'Install', 'kitgenix-multistore' ) . '</a>';
+                $actions .= '<a class="button button-primary" href="' . esc_url( $install_url ) . '">' . esc_html__( 'Install', 'kitgenix-multistore-sync-for-woocommerce' ) . '</a>';
             } elseif ( ! $active ) {
                 if ( current_user_can( 'activate_plugins' ) ) {
                     $activate_url = wp_nonce_url(
                         admin_url( 'plugins.php?action=activate&plugin=' . rawurlencode( $file ) . '&plugin_status=all&paged=1&s=' ),
                         'activate-plugin_' . $file
                     );
-                    $actions .= '<a class="button button-primary" href="' . esc_url( $activate_url ) . '">' . esc_html__( 'Activate', 'kitgenix-multistore' ) . '</a>';
+                    $actions .= '<a class="button button-primary" href="' . esc_url( $activate_url ) . '">' . esc_html__( 'Activate', 'kitgenix-multistore-sync-for-woocommerce' ) . '</a>';
                 } else {
-                    $actions .= '<span class="description">' . esc_html__( 'You do not have permission to activate plugins.', 'kitgenix-multistore' ) . '</span>';
+                    $actions .= '<span class="description">' . esc_html__( 'You do not have permission to activate plugins.', 'kitgenix-multistore-sync-for-woocommerce' ) . '</span>';
                 }
             } else {
                 $open_url = ! empty( $p['page'] ) ? admin_url( 'admin.php?page=' . rawurlencode( (string) $p['page'] ) ) : '';
                 if ( $open_url ) {
-                    $actions .= '<a class="button button-primary" href="' . esc_url( $open_url ) . '">' . esc_html__( 'Open', 'kitgenix-multistore' ) . '</a>';
+                    $actions .= '<a class="button button-primary" href="' . esc_url( $open_url ) . '">' . esc_html__( 'Open', 'kitgenix-multistore-sync-for-woocommerce' ) . '</a>';
                 }
             }
 
             $info_url = admin_url( 'plugin-install.php?tab=plugin-information&plugin=' . rawurlencode( (string) $p['slug'] ) . '&TB_iframe=true&width=600&height=550' );
-            $actions .= ' <a class="button button-secondary thickbox open-plugin-details-modal" href="' . esc_url( $info_url ) . '">' . esc_html__( 'Details', 'kitgenix-multistore' ) . '</a>';
+            $actions .= ' <a class="button button-secondary thickbox open-plugin-details-modal" href="' . esc_url( $info_url ) . '">' . esc_html__( 'Details', 'kitgenix-multistore-sync-for-woocommerce' ) . '</a>';
             if ( $slug ) {
                 $review_url  = 'https://wordpress.org/support/plugin/' . rawurlencode( $slug ) . '/reviews/#new-post';
                 $support_url = 'https://wordpress.org/support/plugin/' . rawurlencode( $slug ) . '/';
-                $actions    .= ' <a class="button button-secondary" href="' . esc_url( $review_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Review', 'kitgenix-multistore' ) . '</a>';
-                $actions    .= ' <a class="button button-secondary" href="' . esc_url( $support_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Support Forum', 'kitgenix-multistore' ) . '</a>';
+                $actions    .= ' <a class="button button-secondary" href="' . esc_url( $review_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Review', 'kitgenix-multistore-sync-for-woocommerce' ) . '</a>';
+                $actions    .= ' <a class="button button-secondary" href="' . esc_url( $support_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Support Forum', 'kitgenix-multistore-sync-for-woocommerce' ) . '</a>';
             }
 
             $kitgenix_hub_allowed_html = [
@@ -592,7 +593,7 @@ if ( ! function_exists( 'kitgenix_multistore_register_admin_ui_style' ) ) {
             return;
         }
 
-        if ( function_exists( 'wp_style_is' ) && wp_style_is( 'kitgenix-admin-ui', 'registered' ) ) {
+        if ( function_exists( 'wp_style_is' ) && wp_style_is( 'kitgenix-multistore-sync-for-woocommerce-admin-ui', 'registered' ) ) {
             return;
         }
 
@@ -600,7 +601,7 @@ if ( ! function_exists( 'kitgenix_multistore_register_admin_ui_style' ) ) {
         $css_file = plugin_dir_path( __FILE__ ) . 'assets/css/kitgenix-admin-ui.css';
         $css_ver  = file_exists( $css_file ) ? (string) filemtime( $css_file ) : $ver;
 
-        wp_register_style( 'kitgenix-admin-ui', plugins_url( 'assets/css/kitgenix-admin-ui.css', __FILE__ ), [], $css_ver );
+        wp_register_style( 'kitgenix-multistore-sync-for-woocommerce-admin-ui', plugins_url( 'assets/css/kitgenix-admin-ui.css', __FILE__ ), [], $css_ver );
     }
 }
 add_action( 'admin_enqueue_scripts', 'kitgenix_multistore_register_admin_ui_style', 5 );
@@ -627,8 +628,8 @@ function kitgenix_multistore_enqueue_hub_assets( string $hook_suffix ): void {
     wp_register_style( 'kitgenix-hub', plugins_url( 'assets/css/kitgenix-hub.css', __FILE__ ), [], $ver );
     wp_enqueue_style( 'kitgenix-hub' );
 
-    wp_register_style( 'kitgenix-admin-ui', plugins_url( 'assets/css/kitgenix-admin-ui.css', __FILE__ ), [], $ver );
-    wp_enqueue_style( 'kitgenix-admin-ui' );
+    wp_register_style( 'kitgenix-multistore-sync-for-woocommerce-admin-ui', plugins_url( 'assets/css/kitgenix-admin-ui.css', __FILE__ ), [], $ver );
+    wp_enqueue_style( 'kitgenix-multistore-sync-for-woocommerce-admin-ui' );
 }
 add_action( 'admin_enqueue_scripts', 'kitgenix_multistore_enqueue_hub_assets' );
 
@@ -661,8 +662,6 @@ register_deactivation_hook( __FILE__, array( 'Kitgenix\\MultiStore\\Database\\Sc
 add_action(
     'plugins_loaded',
     static function (): void {
-        load_plugin_textdomain( 'kitgenix-multistore', false, dirname( KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_BASENAME ) . '/languages' );
-
         if ( ! class_exists( 'WooCommerce' ) ) {
             add_action(
                 'admin_notices',
@@ -679,7 +678,27 @@ add_action(
             return;
         }
 
-        Kitgenix\MultiStore\Plugin::instance()->boot();
+        // boot() runs on plugins_loaded, before WordPress finishes bootstrapping -
+        // an uncaught error here (a missing/broken class file from a partial
+        // upload or deploy, for example) would otherwise be a fatal that takes
+        // down the entire site, including wp-admin, not just this plugin. Fail
+        // safe instead: log it, show an actionable admin notice, and let the
+        // rest of the site keep running.
+        try {
+            Kitgenix\MultiStore\Plugin::instance()->boot();
+        } catch ( \Throwable $e ) {
+            error_log( sprintf( 'Kitgenix MultiStore for WooCommerce failed to start: %s in %s:%d', $e->getMessage(), $e->getFile(), $e->getLine() ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- deliberate: this is the only viable channel this early, before the plugin's own DB-backed Logger has booted.
+            add_action(
+                'admin_notices',
+                static function () use ( $e ): void {
+                    if ( current_user_can( 'activate_plugins' ) ) {
+                        echo '<div class="notice notice-error"><p><strong>Kitgenix MultiStore for WooCommerce</strong> failed to start and has been disabled for this request: '
+                            . esc_html( $e->getMessage() )
+                            . '. This usually means the plugin files are incomplete on this server - try reinstalling the full plugin, or contact support if it persists.</p></div>';
+                    }
+                }
+            );
+        }
     },
     20
 );

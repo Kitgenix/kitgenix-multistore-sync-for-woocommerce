@@ -1,13 +1,20 @@
 <?php
 namespace Kitgenix\MultiStore\Repository;
 
+// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter
+// -- Every query here interpolates only this class's own fixed, developer-controlled table-name
+// property (set once in the constructor from $wpdb->prefix, never from user input); every actual
+// value is passed through $wpdb->prepare() with %s/%d/%f placeholders. This is a plugin-owned
+// custom table with no WordPress core object-cache group; a direct $wpdb call is the only way
+// to interact with it.
+
 use Kitgenix\MultiStore\Support\Revision;
 use Kitgenix\MultiStore\Support\Uuid;
 
 final class InventoryRepository {
     private string $table;
     private string $ledger;
-    public function __construct(){global $wpdb;$this->table=$wpdb->prefix.'kitgenix_multistore_sync_for_woocommerce_inventory';$this->ledger=$wpdb->prefix.'kitgenix_multistore_sync_for_woocommerce_inventory_ledger';}
+    public function __construct(){global $wpdb;$this->table=$wpdb->prefix.'kitgenix_multistore_sync_for_woocommerce_inventory';$this->ledger=$wpdb->prefix.'kitgenix_multistore_sync_for_woocommerce_inv_ledger';}
     public function get(string $network_id):?array{global $wpdb;$r=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table} WHERE network_id=%s LIMIT 1",$network_id),ARRAY_A);return $r?:null;}
     public function set(string $network_id,?float $qty,string $status,string $source,int $revision=0):array{
         global $wpdb;$revision=$revision?:Revision::next();$now=current_time('mysql',true);$q=null===$qty?null:(string)$qty;

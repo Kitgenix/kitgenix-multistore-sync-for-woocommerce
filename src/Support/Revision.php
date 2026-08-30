@@ -1,6 +1,11 @@
 <?php
 namespace Kitgenix\MultiStore\Support;
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+// -- Atomic, cross-process revision counter: the WP Options API has no atomic
+// increment-and-read primitive, so a direct query against wp_options
+// (LAST_INSERT_ID(...) trick) is the only way to hand out a strictly increasing
+// value under concurrent access; caching would defeat the point of a fresh read.
 final class Revision {
     public static function next(): int {
         global $wpdb;

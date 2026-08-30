@@ -1,6 +1,13 @@
 <?php
 namespace Kitgenix\MultiStore\Repository;
 
+// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter
+// -- Every query here interpolates only this class's own fixed, developer-controlled table-name
+// property (set once in the constructor from $wpdb->prefix, never from user input); every actual
+// value is passed through $wpdb->prepare() with %s/%d/%f placeholders. This is a plugin-owned
+// custom table with no WordPress core object-cache group; a direct $wpdb call is the only way
+// to interact with it.
+
 use Kitgenix\MultiStore\Support\ErrorCatalog;
 use Kitgenix\MultiStore\Support\Uuid;
 
@@ -19,7 +26,7 @@ final class ConflictRepository {
     public function recent(int $limit=100,string $status=''):array{global $wpdb;$limit=max(1,min(500,$limit));if($status){return $wpdb->get_results($wpdb->prepare("SELECT * FROM {$this->table} WHERE status=%s ORDER BY id DESC LIMIT %d",sanitize_key($status),$limit),ARRAY_A)?:array();}return $wpdb->get_results($wpdb->prepare("SELECT * FROM {$this->table} ORDER BY id DESC LIMIT %d",$limit),ARRAY_A)?:array();}
     public function open_count():int{global $wpdb;return (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table} WHERE status='open'");}
     /**
-     * Open conflicts whose conflict_type is NOT a recoverable/transient code —
+     * Open conflicts whose conflict_type is NOT a recoverable/transient code –
      * i.e. deliveries that failed for a genuine reason, not a network blip or
      * remote race. Used by NetworkDoctor so the queue health check doesn't
      * flag temporary hiccups as unhealthy. See ErrorCatalog::is_recoverable().

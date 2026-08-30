@@ -49,7 +49,7 @@ final class ReviewSync {
         $review_network = sanitize_text_field( (string) ( $payload['network_id'] ?? '' ) ); $product_network = sanitize_text_field( (string) ( $payload['product_network_id'] ?? '' ) );
         if ( ! wp_is_uuid( $review_network ) || ! wp_is_uuid( $product_network ) ) return new \WP_Error( 'kitgenix_multistore_sync_for_woocommerce_review_payload', 'Invalid review payload.' );
         $product_id = $this->mappings->local_id( $product_network, 'product' ); if ( ! $product_id ) return new \WP_Error( 'kitgenix_multistore_sync_for_woocommerce_review_product', 'Review product mapping is missing.', array( 'status' => 404 ) );
-        $comments = get_comments( array( 'post_id' => $product_id, 'meta_key' => '_kitgenix_multistore_sync_for_woocommerce_review_network_id', 'meta_value' => $review_network, 'number' => 1, 'status' => 'all' ) );
+        $comments = get_comments( array( 'post_id' => $product_id, 'meta_key' => '_kitgenix_multistore_sync_for_woocommerce_review_network_id', 'meta_value' => $review_network, 'number' => 1, 'status' => 'all' ) );  // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- get_comments() has no other way to look up a review by this plugin's own network-UUID comment meta; scope is already bounded to a single product (post_id) and number=>1.
         $data = array( 'comment_post_ID' => $product_id, 'comment_author' => sanitize_text_field( (string) ( $payload['author'] ?? 'Customer' ) ), 'comment_content' => wp_kses_post( (string) ( $payload['content'] ?? '' ) ), 'comment_type' => 'review', 'comment_approved' => sanitize_text_field( (string) ( $payload['approved'] ?? '1' ) ), 'comment_date_gmt' => sanitize_text_field( (string) ( $payload['date_gmt'] ?? current_time( 'mysql', true ) ) ), 'comment_date' => get_date_from_gmt( sanitize_text_field( (string) ( $payload['date_gmt'] ?? current_time( 'mysql', true ) ) ) ) );
         $cid = Context::remote( function() use ( $comments, $data, $review_network, $payload ) {
             if ( $comments ) { $row = $data; $row['comment_ID'] = $comments[0]->comment_ID; wp_update_comment( wp_slash( $row ) ); $id = (int) $comments[0]->comment_ID; }
@@ -57,7 +57,7 @@ final class ReviewSync {
             if ( $id ) { update_comment_meta( $id, 'rating', max( 0, min( 5, (int) ( $payload['rating'] ?? 0 ) ) ) ); update_comment_meta( $id, 'verified', ! empty( $payload['verified'] ) ? 1 : 0 ); }
             return $id;
         } );
-        wc_update_product_rating_counts( $product_id ); wc_update_product_review_count( $product_id ); wc_update_product_average_rating( $product_id );
+        \WC_Comments::clear_transients( $product_id );
         if ( $this->settings->is_control() && $source !== Uuid::site() ) $this->dispatcher->dispatch( 'review_upsert', 'review', $review_network, $payload, $this->dispatcher->targets_for( $source ), $source );
         return array( 'local_id' => $cid, 'object_key' => $review_network );
     }
@@ -67,9 +67,9 @@ final class ReviewSync {
         if ( ! wp_is_uuid( $review_network ) ) return new \WP_Error( 'kitgenix_multistore_sync_for_woocommerce_review_payload', 'Invalid review payload.' );
         $product_id = $this->mappings->local_id( $product_network, 'product' );
         if ( $product_id ) {
-            $comments = get_comments( array( 'post_id' => $product_id, 'meta_key' => '_kitgenix_multistore_sync_for_woocommerce_review_network_id', 'meta_value' => $review_network, 'number' => 1, 'status' => 'all' ) );
+            $comments = get_comments( array( 'post_id' => $product_id, 'meta_key' => '_kitgenix_multistore_sync_for_woocommerce_review_network_id', 'meta_value' => $review_network, 'number' => 1, 'status' => 'all' ) );  // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- get_comments() has no other way to look up a review by this plugin's own network-UUID comment meta; scope is already bounded to a single product (post_id) and number=>1.
             if ( $comments ) Context::remote( fn() => wp_delete_comment( $comments[0]->comment_ID, true ) );
-            wc_update_product_rating_counts( $product_id ); wc_update_product_review_count( $product_id ); wc_update_product_average_rating( $product_id );
+            \WC_Comments::clear_transients( $product_id );
         }
         if ( $this->settings->is_control() && $source !== Uuid::site() ) $this->dispatcher->dispatch( 'review_delete', 'review', $review_network, $payload, $this->dispatcher->targets_for( $source ), $source );
         return array( 'local_id' => 0, 'object_key' => $review_network );

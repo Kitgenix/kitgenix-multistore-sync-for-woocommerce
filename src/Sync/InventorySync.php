@@ -20,7 +20,7 @@ final class InventorySync {
     /** @var array<int,string> Last fallback direct-save stock fingerprint handled in this request. */
     private array $direct_save_fingerprints=array();
     public function __construct(private InventoryRepository$inventory,private MappingRepository$mappings,private Dispatcher$dispatcher,private StoreRepository$stores,private Client$client,private Logger$logger,private Settings$settings){}
-    public function hooks():void{add_action('woocommerce_product_before_set_stock',array($this,'before'),10,1);add_action('woocommerce_variation_before_set_stock',array($this,'before'),10,1);add_action('woocommerce_product_set_stock',array($this,'after'),20,1);add_action('woocommerce_variation_set_stock',array($this,'after'),20,1);add_action('woocommerce_product_object_updated_props',array($this,'after_object_save'),30,2);add_action('woocommerce_check_cart_items',array($this,'validate_cart_inventory'),50);}
+    public function hooks():void{add_action('woocommerce_product_before_set_stock',array($this,'before'),10,1);add_action('woocommerce_variation_before_set_stock',array($this,'before'),10,1);add_action('woocommerce_product_set_stock',array($this,'after'),20,1);add_action('woocommerce_variation_set_stock',array($this,'after'),20,1);add_action('woocommerce_product_object_updated_props',array($this,'after_object_save'),30,2);add_action('woocommerce_restore_order_stock',array($this,'after_stock_restored'),20,1);add_action('woocommerce_check_cart_items',array($this,'validate_cart_inventory'),50);}
     public function before(\WC_Product$product):void{if(Context::is_remote()||'yes'!==$this->settings->get('sync_inventory','yes'))return;$id=$product->get_id();$this->native_stock_update[$id]=true;$raw=get_post_meta($id,'_stock',true);$this->before[$id]=(''===$raw||null===$raw)?null:(float)$raw;}
     public function after(\WC_Product$product):void{if(Context::is_remote()||'yes'!==$this->settings->get('sync_inventory','yes'))return;$id=$product->get_id();$old=$this->before[$id]??null;unset($this->before[$id],$this->native_stock_update[$id]);$this->native_stock_handled[$id]=true;$new=$product->get_stock_quantity();if(null===$new)return;$delta=(float)$new-(float)($old??$new);if(abs($delta)<0.00001&&null!==$old)return;$type=$product->is_type('variation')?'variation':'product';$network=$this->mappings->network_id($type,$id,(string)$product->get_sku());$base=array('network_id'=>$network,'sku'=>$product->get_sku(),'is_variation'=>$product->is_type('variation'),'stock_status'=>$product->get_stock_status(),'reference'=>$this->stock_reference());
         if($this->settings->is_control()){
@@ -34,6 +34,10 @@ final class InventorySync {
             }
             elseif(null!==$old){$result=$this->inventory->apply_delta($network,$delta,(float)$old,$product->get_stock_status(),Uuid::site(),Uuid::make(),'local_stock_change',$base['reference']);$quantity=(float)$result['quantity'];$revision=(int)$result['revision'];$status=$quantity>0?'instock':($product->backorders_allowed()?'onbackorder':'outofstock');if($status!==(string)$result['stock_status'])$this->inventory->set($network,$quantity,$status,Uuid::site(),$revision);}
             else{$revision=Revision::next();$quantity=(float)$new;$this->inventory->set($network,$quantity,$status,Uuid::site(),$revision);}
+            // Shared fingerprint with after_object_save()/after_stock_restored() so a
+            // change already captured on this exact product+value in this request is
+            // never dispatched twice when more than one WooCommerce hook fires for it.
+            $this->direct_save_fingerprints[$id]=$quantity.'|'.$status;
             $payload=array_merge($base,array('quantity'=>$quantity,'stock_status'=>$status,'revision'=>$revision));$this->dispatcher->dispatch('inventory_set',$type,$network,$payload,array(),Uuid::site(),null,$revision);do_action('kitgenix_multistore/inventory_authoritative_changed',$network,$quantity,$status);
         }
         else{$payload=array_merge($base,array('delta'=>$delta,'resulting_quantity'=>(float)$new));$this->dispatcher->dispatch('inventory_delta',$type,$network,$payload);}
@@ -99,6 +103,80 @@ final class InventorySync {
         do_action('kitgenix_multistore/external_inventory_captured',$product,$quantity,$source,$revision);
     }
 
+    /**
+     * WooCommerce restores previously-reduced stock in two situations this
+     * plugin must react to regardless of ambient sync context:
+     *
+     *  - A refund with "restock items" checked (long-standing core behaviour).
+     *  - As of WooCommerce 11.0, an order transitioning to "failed" status now
+     *    also restores stock via `wc_maybe_increase_stock_levels()`, which
+     *    fires this same `woocommerce_restore_order_stock` hook.
+     *
+     * Both `OrderSync::apply_status()` and `OrderSync::apply_refund()` wrap
+     * their WooCommerce call in `Context::remote()` – not to suppress
+     * inventory, but to stop that single order-status change being queued
+     * for outbound re-sync twice. `before()`/`after()` unfortunately share
+     * that same ambient flag, so a stock restoration triggered from inside
+     * either of those methods would otherwise be silently dropped from the
+     * authoritative network ledger. This handler deliberately does NOT check
+     * Context::is_remote() – real stock was actually restored, and the
+     * Control Store's ledger must reflect that no matter what triggered it.
+     *
+     * Only the Control Store acts here; a Connected Store's own restoration
+     * of its own order stock is not authoritative for the network.
+     */
+    public function after_stock_restored( \WC_Order $order ): void {
+        if ( 'yes' !== $this->settings->get( 'sync_inventory', 'yes' ) || ! $this->settings->is_control() ) {
+            return;
+        }
+
+        foreach ( $order->get_items() as $item ) {
+            if ( ! $item instanceof \WC_Order_Item_Product ) {
+                continue;
+            }
+            $product = $item->get_product();
+            if ( ! $product instanceof \WC_Product || ! $product->get_manage_stock() || null === $product->get_stock_quantity() ) {
+                continue;
+            }
+
+            $id = $product->get_id();
+            // The generic *_set_stock hooks (before()/after()) are the primary
+            // path and already handle this when they fire; this is a fallback
+            // for exactly the ambient-context gap described above, so skip if
+            // this exact quantity was already captured in this request.
+            $quantity    = (float) $product->get_stock_quantity();
+            $status      = $quantity > 0 ? 'instock' : ( $product->backorders_allowed() ? 'onbackorder' : 'outofstock' );
+            // Shared fingerprint format with after() / after_object_save() – if the
+            // generic stock hooks already captured this exact value for this product
+            // in this request, skip rather than dispatch a redundant duplicate.
+            $fingerprint = $quantity . '|' . $status;
+            if ( ( $this->direct_save_fingerprints[ $id ] ?? '' ) === $fingerprint ) {
+                continue;
+            }
+            $this->direct_save_fingerprints[ $id ] = $fingerprint;
+
+            $type    = $product->is_type( 'variation' ) ? 'variation' : 'product';
+            $network = $this->mappings->network_id( $type, $id, (string) $product->get_sku() );
+            $result  = $this->inventory->apply_set( $network, $quantity, $status, Uuid::site(), Uuid::make(), 'order_stock_restored', 'order_stock_restoration' );
+            $quantity = (float) $result['quantity'];
+            $revision = (int) $result['revision'];
+            $status   = (string) $result['stock_status'];
+
+            $payload = array(
+                'network_id'   => $network,
+                'sku'          => $product->get_sku(),
+                'is_variation' => $product->is_type( 'variation' ),
+                'quantity'     => $quantity,
+                'stock_status' => $status,
+                'revision'     => $revision,
+                'reference'    => 'order_stock_restoration',
+            );
+            $this->dispatcher->dispatch( 'inventory_set', $type, $network, $payload, array(), Uuid::site(), null, $revision );
+            $this->logger->info( 'Order-driven stock restoration updated authoritative network stock.', array( 'order_id' => $order->get_id(), 'product_id' => $id, 'network_id' => $network, 'quantity' => $quantity, 'revision' => $revision ) );
+            do_action( 'kitgenix_multistore/inventory_authoritative_changed', $network, $quantity, $status );
+        }
+    }
+
     private function direct_save_source():string{
         if(defined('DOING_SQUARE_SYNC')&&true===DOING_SQUARE_SYNC)return'square';
         if(function_exists('wc_square'))return'woocommerce_direct_save';
@@ -114,8 +192,10 @@ final class InventorySync {
         $control=$this->stores->control();if(!$control)return;$items=array();
         foreach(WC()->cart->get_cart() as $cart_item){$product=$cart_item['data']??null;if(!$product instanceof \WC_Product||!$product->managing_stock())continue;$managed_id=method_exists($product,'get_stock_managed_by_id')?(int)$product->get_stock_managed_by_id():$product->get_id();$managed=wc_get_product($managed_id);if(!$managed)continue;$type=$managed->is_type('variation')?'variation':'product';$network=$this->mappings->network_id($type,$managed->get_id(),(string)$managed->get_sku());if(!isset($items[$network]))$items[$network]=0;$items[$network]+=(float)($cart_item['quantity']??0);}
         if(!$items)return;$payload=array('items'=>array_map(static fn($network,$qty)=>array('network_id'=>$network,'quantity'=>$qty),array_keys($items),array_values($items)));$r=$this->client->request($control['uuid'],'POST','/inventory/availability',$payload);
-        if(is_wp_error($r)){ $this->logger->warning('Authoritative checkout inventory validation failed.',array('error'=>$r->get_error_message())); if('yes'===$this->settings->get('inventory_fail_closed','no'))wc_add_notice(__('We could not verify network stock availability. Please try checkout again.','kitgenix-multistore'),'error'); return; }
-        foreach((array)($r['unavailable']??array()) as $row){$name=sanitize_text_field((string)($row['name']??__('an item','kitgenix-multistore')));$available=(float)($row['available']??0);wc_add_notice(sprintf(__('Only %1$s of %2$s is currently available across the store network.','kitgenix-multistore'),wc_format_localized_decimal($available),$name),'error');}
+        if(is_wp_error($r)){ $this->logger->warning('Authoritative checkout inventory validation failed.',array('error'=>$r->get_error_message())); if('yes'===$this->settings->get('inventory_fail_closed','no'))wc_add_notice(__('We could not verify network stock availability. Please try checkout again.','kitgenix-multistore-sync-for-woocommerce'),'error'); return; }
+        foreach((array)($r['unavailable']??array()) as $row){$name=sanitize_text_field((string)($row['name']??__('an item','kitgenix-multistore-sync-for-woocommerce')));$available=(float)($row['available']??0);
+            /* translators: 1: available quantity, 2: item name */
+            wc_add_notice(sprintf(__('Only %1$s of %2$s is currently available across the store network.','kitgenix-multistore-sync-for-woocommerce'),wc_format_localized_decimal($available),$name),'error');}
     }
     private function stock_reference():string{if(defined('DOING_SQUARE_SYNC')&&true===DOING_SQUARE_SYNC)return'square';if(function_exists('is_admin')&&is_admin())return'admin';return function_exists('WC')&&WC()&&WC()->session?'checkout_or_frontend':'system';}
 }

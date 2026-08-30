@@ -4,6 +4,11 @@ namespace Kitgenix\MultiStore\Migration;
 use Kitgenix\MultiStore\Repository\MappingRepository;
 use Kitgenix\MultiStore\Support\Logger;
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+// -- {$wpdb->postmeta} is WordPress core's own table property, not user input; these
+// queries scan for the third-party WooMultistore plugin's own meta key prefix
+// ('_woonet_%'), which has no WP API equivalent (get_posts()/WP_Query can't do a
+// LIKE scan across all post meta to discover distinct post IDs this way).
 final class WooMultistoreImporter {
     public function __construct(private MappingRepository$mappings,private Logger$logger){}
     public function detect():array{global$wpdb;$count=(int)$wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key LIKE '_woonet_%'");return array('detected'=>$count>0,'products'=>$count,'settings'=>(bool)get_option('woonet_options'));}

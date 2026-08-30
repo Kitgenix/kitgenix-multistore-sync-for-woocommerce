@@ -1,6 +1,13 @@
 <?php
 namespace Kitgenix\MultiStore\Repository;
 
+// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter
+// -- Every query here interpolates only this class's own fixed, developer-controlled table-name
+// property (set once in the constructor from $wpdb->prefix, never from user input); every actual
+// value is passed through $wpdb->prepare() with %s/%d/%f placeholders. This is a plugin-owned
+// custom table with no WordPress core object-cache group; a direct $wpdb call is the only way
+// to interact with it.
+
 final class OrderRepository {
     private string $table;
     public function __construct() { global $wpdb; $this->table = $wpdb->prefix . 'kitgenix_multistore_sync_for_woocommerce_remote_orders'; }

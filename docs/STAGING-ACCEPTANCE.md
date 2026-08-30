@@ -1,16 +1,17 @@
-# Kitgenix MultiStore 1.0.0 — Staging Acceptance Matrix
+# Kitgenix MultiStore 1.0.0 – Staging Acceptance Matrix
 
 Run this matrix on at least two clean HTTPS WooCommerce staging stores before a live rollout. A three-store test is strongly recommended for fan-out, store policies and reconciliation. Test on the same hosting/CDN/security stack intended for production.
 
 ## Environment
 
-- WordPress 6.8+
-- WooCommerce 9.8+
-- PHP 8.1+
+- WordPress 6.8+ (tested up to 7.1)
+- WooCommerce 10.0+ (tested up to 11.0.0)
+- PHP 8.1–8.4
 - HTTPS on production-equivalent sites
 - WP-Cron working or Action Scheduler available
 - HPOS tested in the mode used by the target stores
 - If using Native Multisite, network-activate the plugin and test at least three subsites
+- If WooCommerce Square is installed, confirm the exact plugin version and re-check `docs/SQUARE-INVENTORY.md` – the stock-quantity write path it depends on can change between Square plugin releases
 
 ## Pairing, topology and security
 
@@ -52,6 +53,11 @@ Run this matrix on at least two clean HTTPS WooCommerce staging stores before a 
 2. Verify simple regular/sale prices and every variation price.
 3. Verify a manual destination price override wins over the percentage rule.
 4. Change the percentage and queue all products; confirm recalculation occurs without editing each product.
+5. Switch the rule to a fixed amount and confirm the destination price reflects the flat adjustment, floored at zero.
+6. Switch the rule to an exchange multiplier and confirm the destination price is the source price multiplied by the configured factor.
+7. Enable each rounding strategy in turn (nearest whole number, nearest 0.50, charm X.95, charm X.99) and confirm the destination price lands exactly where expected.
+8. Test each sale-price handling mode: same rule applied to sale price; original discount percentage preserved against the new regular price; sale price passed through unadjusted; sale price always cleared.
+9. Re-sync the same product several times in a row with a rule enabled and confirm the destination price never compounds – it always matches a single fresh calculation from the current source price.
 
 ## Taxonomy, metadata and media fidelity
 
@@ -79,6 +85,26 @@ Run this matrix on at least two clean HTTPS WooCommerce staging stores before a 
 5. Test checkout inventory validation and both fail-open/fail-closed modes.
 6. If WooCommerce Square is used, change Square stock, let WooCommerce Square update Control, and verify the absolute final quantity fans out to all stores.
 7. Place a Connected-Store order and verify the authoritative quantity flows back through Control without double decrement.
+8. On the Control Store, refund an order with "restock items" enabled and confirm the restored stock reaches the authoritative ledger and every connected store (not just the local WooCommerce quantity).
+9. On the Control Store, transition an order to Failed status (WooCommerce 11.0+ restores its reduced stock automatically) and confirm the restored stock likewise reaches the authoritative ledger and every connected store.
+10. Confirm neither of the two scenarios above double-counts the same stock restoration (check the inventory ledger for exactly one entry per restoration, and the Sync Centre for exactly one dispatched event).
+
+## Connection health
+
+1. Pair two stores and confirm the Stores screen shows "Connected" with matching WordPress/WooCommerce/plugin versions and a recent "last contact" time.
+2. Temporarily rotate the pairing secret on one side only and confirm the next health check marks the store "Authentication Failed", distinct from a generic "Offline".
+3. Take a store fully offline (stop the site) and confirm the next health check marks it "Offline".
+4. Confirm a store running WordPress/WooCommerce below this plugin's stated minimum, or without Action Scheduler, is marked "Warning" rather than "Connected".
+
+## Bulk operations
+
+1. Start a product-sync bulk job as a dry run; confirm it reports counts without changing or sending anything.
+2. Start a real product-sync bulk job on a catalogue large enough to require multiple batches; confirm progress advances, the request never times out, and the final report matches reality.
+3. Pause a running bulk job, confirm it stops advancing, then resume it and confirm it continues from where it left off rather than restarting.
+4. Start a reconcile bulk job as a dry run and confirm no repair events are dispatched.
+5. Confirm a product/store deliberately excluded from sync is never "repaired" back onto that store by a reconcile bulk job.
+6. Run `wp kitgenix-multistore-sync-for-woocommerce bulk-sync --products=<a few IDs>` and confirm only those products are processed with a live progress bar.
+7. Confirm the existing automatic hourly background reconciliation still runs unaffected by any of the above.
 
 ## Central orders
 
@@ -124,4 +150,4 @@ Where installed, test the exact extension versions used in production:
 
 ## Launch gate
 
-Do not launch until the inventory concurrency, failed-network retry, policy-matrix, price-rule, order refund/import, sequential-number, My Account privacy and reconciliation scenarios above pass on the actual production-equivalent stack.
+Do not launch until the inventory concurrency, failed-network retry, policy-matrix, price-rule, order refund/import, sequential-number, My Account privacy, reconciliation, order-driven stock restoration, connection-health, and bulk-operations scenarios above pass on the actual production-equivalent stack.

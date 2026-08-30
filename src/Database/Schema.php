@@ -104,7 +104,17 @@ final class Schema {
             KEY revision (revision)
         ) {$charset};";
 
-        $sql[] = "CREATE TABLE {$p}inventory_ledger (
+        // 'inventory_ledger' is renamed to the shorter 'inv_ledger' here: with the
+        // full 'kitgenix_multistore_sync_for_woocommerce_' prefix, the old name is
+        // 65 characters once a site's own $wpdb->prefix is added on top - one over
+        // MySQL's 64-character identifier limit for any site whose table prefix is
+        // longer than about 7 characters (e.g. a randomized/hardened prefix), so
+        // this table silently never got created there at all. On a site where the
+        // shorter prefix let it fit before, self_heal_ledger_table_rename() below
+        // renames the existing table (and its data) to the new name first, so nothing
+        // is lost; everywhere else dbDelta below just creates it fresh under the new name.
+        self::self_heal_ledger_table_rename( $wpdb, $p );
+        $sql[] = "CREATE TABLE {$p}inv_ledger (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             entry_uuid char(36) NOT NULL,
             network_id char(36) NOT NULL,
@@ -223,13 +233,31 @@ final class Schema {
 
     }
 
+    /**
+     * Renames the pre-1.0.0 'inventory_ledger' table to 'inv_ledger' in place
+     * (a metadata-only operation, not a data copy) when it already exists under
+     * the old name - only true for a site whose $wpdb->prefix was short enough
+     * that the old 65+-char identifier never actually hit MySQL's limit.
+     */
+    private static function self_heal_ledger_table_rename( \wpdb $wpdb, string $p ): void {
+        $old = $p . 'inventory_ledger';
+        $new = $p . 'inv_ledger';
+        if ( strlen( $old ) > 64 ) return; // Never existed on this site; nothing to rename.
+        $old_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $old ) ) === $old;
+        if ( ! $old_exists ) return;
+        $new_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new ) ) === $new;
+        if ( $new_exists ) return; // Already migrated.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $old/$new are derived from $wpdb->prefix plus a fixed literal, never user input; table/column identifiers cannot be passed through $wpdb->prepare().
+        $wpdb->query( "RENAME TABLE `{$old}` TO `{$new}`" );
+    }
+
     public static function deactivate(): void {
         wp_clear_scheduled_hook( 'kitgenix_multistore_sync_for_woocommerce_fallback_health_check' );
         wp_clear_scheduled_hook( 'kitgenix_multistore_sync_for_woocommerce_fallback_reconcile' );
         wp_clear_scheduled_hook( 'kitgenix_multistore_sync_for_woocommerce_fallback_cleanup' );
         if ( function_exists( 'as_unschedule_all_actions' ) ) {
             foreach ( array( 'kitgenix_multistore_sync_for_woocommerce_health_check', 'kitgenix_multistore_sync_for_woocommerce_reconcile', 'kitgenix_multistore_sync_for_woocommerce_cleanup' ) as $hook ) {
-                as_unschedule_all_actions( $hook, array(), 'kitgenix-multistore' );
+                as_unschedule_all_actions( $hook, array(), 'kitgenix-multistore-sync-for-woocommerce' );
             }
         }
     }

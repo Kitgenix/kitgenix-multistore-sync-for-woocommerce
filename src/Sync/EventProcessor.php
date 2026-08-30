@@ -33,7 +33,11 @@ final class EventProcessor {
             };
         }catch(\Throwable$e){$result=new \WP_Error('kitgenix_multistore_sync_for_woocommerce_event_exception',$e->getMessage(),array('status'=>500));}
         if(is_wp_error($result)){$this->events->mark_event($uuid,'failed');$this->conflicts->record($uuid,(string)$event['entity_type'],(string)$event['network_id'],$authenticated_source,$result->get_error_code(),$result->get_error_message(),$payload);$this->logger->error('Incoming network event failed.',array('event'=>$uuid,'type'=>$type,'error'=>$result->get_error_message()));return$result;}
-        $this->events->mark_event($uuid,'completed');$this->conflicts->resolve_for_event($uuid,$authenticated_source);$this->logger->info('Incoming network event applied.',array('event'=>$uuid,'type'=>$type,'source'=>$authenticated_source));
+        $this->events->mark_event($uuid,'completed');$this->conflicts->resolve_for_event($uuid,$authenticated_source);
+        // Reuses the single log row this event already produced (no added log volume) to carry
+        // the applied outcome - e.g. unchanged/skipped=older_revision - so a repeated identical
+        // sync is visibly distinguishable in the Logs tab from a genuine create/update.
+        $this->logger->info('Incoming network event applied.',array('event'=>$uuid,'type'=>$type,'source'=>$authenticated_source,'result'=>is_array($result)?array_intersect_key($result,array_flip(array('unchanged','skipped','local_id'))):array()));
         if('product_upsert'===$type&&$this->settings->is_control()&&'bidirectional'===$this->settings->get('product_direction','control_only')){$targets=$this->dispatcher->targets_for($authenticated_source);$this->dispatcher->dispatch('product_upsert','product',(string)$event['network_id'],$payload,$targets,$authenticated_source,$uuid);}
         return array_merge(array('status'=>'applied'),is_array($result)?$result:array());
     }

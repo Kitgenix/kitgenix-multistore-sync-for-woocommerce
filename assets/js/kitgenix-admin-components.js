@@ -1,8 +1,8 @@
-/* Kitgenix Admin UI — Shared page-content component controller.
+/* Kitgenix Admin UI – Shared page-content component controller.
    Keep this file identical between plugins to ensure consistent UI/UX.
    Handles: modal open/close, collapsible cards, copy-to-clipboard,
    live table search/filter, and the toast/inline-save-confirmation helper.
-   Does NOT touch kitgenix-admin-tabs.js — this is a separate, additive file.
+   Does NOT touch kitgenix-admin-tabs.js – this is a separate, additive file.
 */
 
 (function () {
@@ -298,7 +298,7 @@
             var match = !query || text.indexOf(query) !== -1;
             row.setAttribute('data-kitgenix-search-hidden', match ? '0' : '1');
             // Non-matches are always hidden immediately here. Matches, when
-            // pagination owns this table, are left alone — pagination.reset()
+            // pagination owns this table, are left alone – pagination.reset()
             // below decides which of the matching rows fall on the current
             // page, so the two features don't fight over the same row.
             if (!match) {
@@ -336,7 +336,7 @@
   /* ─────────────────────────────────────
      Lightweight client-side table pagination
      Opt-in only: add data-kitgenix-table-paginate="25" (page size) to a
-     .kitgenix-table-wrap. Operates purely on already-rendered rows — no
+     .kitgenix-table-wrap. Operates purely on already-rendered rows – no
      query/data-model changes. Coordinates with live search above via
      data-kitgenix-search-hidden so the two never fight over row visibility.
   ───────────────────────────────────── */
@@ -494,7 +494,7 @@
   /* ─────────────────────────────────────
      Boot / public API
      initComponents() is idempotent and safe to call again after injecting
-     new markup (e.g. an AJAX-rendered table) — already-bound elements are
+     new markup (e.g. an AJAX-rendered table) – already-bound elements are
      skipped via the data-kitgenix-bound guard, delegated click/keydown
      listeners are only ever attached once.
   ───────────────────────────────────── */
@@ -526,7 +526,7 @@
 
   if (window.KitgenixAdminUI.componentsReady) {
     // Script included more than once (e.g. by two plugins on the same
-    // screen) — just rescan for any not-yet-bound elements, don't
+    // screen) – just rescan for any not-yet-bound elements, don't
     // re-attach the document-level delegated listeners.
     initComponents(document);
   } else {
