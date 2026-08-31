@@ -1,118 +1,182 @@
 === Kitgenix MultiStore Sync for WooCommerce ===
 Contributors: kitgenix
 Donate link: https://www.paypal.com/donate/?hosted_button_id=KALF36K6JJ9B2
-Tags: woocommerce, multistore, multisite, stock sync, inventory sync, product sync, order sync, coupon sync, wholesale, rest api, sync, multi-store
+Tags: woocommerce, multistore sync, inventory sync, product sync, order sync
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.1
 Stable tag: 1.0.0
 License: GPLv2 or later
-Requires Plugins: woocommerce
-WC requires at least: 10.0
-WC tested up to: 11.0.0
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Sync WooCommerce products, stock, orders, coupons and customers between stores or a Multisite network over a signed REST connection.
+Synchronize WooCommerce products, inventory, orders, coupons and optional customer/review data across connected stores.
 
 == Description ==
 
-Kitgenix MultiStore Sync for WooCommerce keeps two or more WooCommerce stores in step. Product data, stock levels, orders, coupons and — optionally — customers and reviews are synchronised through a signed, store-to-store REST API connection, with every change captured as an auditable event, delivered asynchronously, retried automatically if something goes wrong, and reconciled in the background so every connected catalogue converges on the same authoritative data.
+**Kitgenix MultiStore Sync for WooCommerce** connects multiple WooCommerce stores so product, inventory and selected commerce data can be coordinated from a Control Store without sending the sync workload through a hosted Kitgenix service.
 
-It's built for anyone running more than one WooCommerce store from a single product catalogue — a wholesale site paired with a retail site, a group of regional storefronts, a set of sites on a WordPress Multisite network, or a migration off an existing multi-store setup — where stock and product data need to stay accurate everywhere without manual duplication.
+It supports independently hosted WooCommerce installations as well as WordPress Multisite. Stores communicate directly with one another over authenticated REST requests, while Action Scheduler is used for asynchronous delivery where available and WP-Cron provides fallback scheduling.
 
-One store acts as the **Control Store** (the source of truth) and the others as **Connected Stores**. On a WordPress Multisite network this pairing is discovered automatically; for separate WordPress installations, you connect each store explicitly with a one-time pairing code and an encrypted shared secret.
+The plugin is aimed at merchants operating regional storefronts, wholesale/retail sites, brand-specific stores, several domains sharing one catalogue, or a WordPress Multisite network that needs stronger cross-store coordination than manually exporting products and stock.
 
-= Key Features =
+Learn more about Kitgenix at [Kitgenix](https://kitgenix.com/).
 
-* **Control Store / Connected Store network** — one authoritative catalogue and stock ledger, with any number of connected stores, paired individually or discovered automatically across a WordPress Multisite network.
-* **Product & variation sync** — name, slug, status, descriptions, SKU, GTIN/unique ID, prices, tax settings, stock/backorder settings, dimensions, shipping class, up-sells/cross-sells, downloads, categories/tags/brands/custom taxonomies with full ancestor hierarchies, attributes, images and variable-product children.
-* **Authoritative inventory sync** — stock is always kept as a single agreed quantity and status rather than a running delta, with an hourly background job that automatically finds and repairs any drift.
-* **Central order visibility** — orders from every connected store are indexed on the Control Store for network-wide search, reporting, bulk status updates and CSV/XLSX export, with optional import as full WooCommerce orders.
-* **Coupon, customer and review sync** — coupons flow Control Store → Connected Stores by default; customer records and product reviews are off by default and can be switched on deliberately.
-* **Per-store pricing rules** — a percentage, fixed-amount or exchange-rate multiplier adjustment for each connected store, with optional rounding/charm pricing, configurable sale-price handling, and manual per-product/per-store overrides.
-* **Per-store field policies** — different synchronisation rules for a product's initial publish versus its later updates, set independently for each connected store.
-* **Resumable Bulk Operations** — a full product re-sync or full inventory reconciliation runs in small batches with dry-run, pause/resume/stop and persisted progress, so a large catalogue never times out a single request.
-* **Inventory automations** — automatically publish, unpublish or hide a product across the network once its authoritative stock level crosses a threshold you define.
-* **Network Doctor & logging** — one-screen local and remote connectivity diagnostics, plus a searchable, paginated log with plain-English explanations of what each recorded issue means.
-* **WP-CLI tooling** — `status`, `reconcile`, `sync-product`, `doctor`, `index-orders`, `bulk-sync` and `bulk-reconcile` commands, the last two with live progress bars and dry-run support.
-* **Built-in compatibility adapters** — WooCommerce Square, Rank Math, Yoast SEO, WPML, Polylang, ATUM Multi-Inventory, WooCommerce Cost of Goods, PDF Invoices & Packing Slips, Price by User Role, Per Product Shipping, Custom Product Tabs/WP All Import, Elementor Pro, Divi Shop Builder, plus Kitgenix Custom Tabs and Kitgenix Document Manager.
+= Multi-Store WooCommerce Features =
 
-= Connecting Stores =
+* Control Store and Connected Store architecture for independent WordPress installations.
+* Native WordPress Multisite discovery mode.
+* Product and variation synchronization.
+* Authoritative network inventory synchronization.
+* Central order indexing on the Control Store.
+* Optional import of remote order snapshots as WooCommerce orders.
+* Remote order status, note and refund actions supported by authenticated routes/workflows.
+* Coupon synchronization.
+* Optional customer synchronization.
+* Optional product-review synchronization.
+* Per-store price rules.
+* Per-store field policies for initial publish versus later updates.
+* Store groups and per-product target/exclusion controls.
+* Resumable bulk product sync and inventory reconciliation.
+* Dry-run, pause, resume and stop controls for supported bulk jobs.
+* Automatic inventory actions based on stock thresholds.
+* Delivery retry/backoff and conflict recording.
+* Network Doctor and health checks.
+* Searchable logs and delivery diagnostics.
+* CSV/XLSX order export.
+* WP-CLI commands for status, reconciliation, product sync, doctor, order indexing and bulk jobs.
+* Migration bridge for supported WooMultistore data/configuration paths present in the codebase.
+* Integration hooks for product meta/payload customization and selected Kitgenix cross-plugin data.
+* WooCommerce HPOS compatibility handling.
 
-Two connection modes are supported:
+= Control Store and Connected Stores =
 
-* **Separate WordPress installations** — on the store that should hold the master catalogue, generate a one-time pairing code (expires after 10 minutes). On each other store, enter that store's URL and the pairing code; the two stores then exchange a randomly generated 32-byte shared secret over a signed request and remember each other as paired. HTTPS is required for any production-to-production pairing.
-* **WordPress Multisite** — enable Native WordPress Multisite mode and choose the Control Site; every other site on the network is discovered automatically and paired using a network-wide credential, with no manual pairing code needed.
+One site acts as the Control Store. Other WooCommerce sites are paired as Connected Stores. The Control Store keeps the network registry, policies and central operational views, while connected stores exchange signed events directly with it.
 
-Either way, once paired, a store can be paused (holding deliveries without losing its connection or mappings) or disconnected entirely from the Stores screen.
+For separate WordPress installations, a pairing workflow creates the trusted relationship. For WordPress Multisite, Native Multisite mode can discover network sites and determine the control site without requiring the same manual pairing flow for every subsite.
 
-= What Syncs Between Stores =
+The plugin does not impose a small fixed store-count constant in the application logic; practical scale is instead determined by catalogue size, event volume, hosting resources, network latency and Action Scheduler/cron throughput.
 
-* **Products & variations** — title, slug, status, descriptions, SKU, prices, tax settings, stock/backorder settings, weight/dimensions, shipping class, up-sells/cross-sells, downloads, and variable-product children.
-* **Categories, tags, brands and custom taxonomies** — including term descriptions, category thumbnails, and attribute-term metadata, with full ancestor hierarchies preserved.
-* **Images** — featured image and gallery, with ALT text, title, caption and description, copied locally to each store by default (or served from shared network media on Multisite, if enabled).
-* **Selected metadata** — Rank Math and Yoast SEO fields plus any custom meta keys or custom taxonomies you list, synced as a whitelist rather than everything on the product.
-* **Stock levels** — synced as an authoritative quantity/status, not as a running delta, so every store converges on the same number.
-* **Orders** — indexed centrally on the Control Store for network-wide search, reporting, bulk status updates and CSV/XLSX export; optionally imported as real WooCommerce orders, with placeholder product cloning if the ordered product doesn't exist there yet.
-* **Coupons** — created on the Control Store and pushed to Connected Stores.
-* **Customers** (off by default) — customer records pushed from a Connected Store to the Control Store for a consolidated view.
-* **Product reviews and ratings** (off by default) — fanned out network-wide when enabled.
+= Product and Variation Synchronization =
 
-Per-store field policies let you set different rules for a product's *initial publish* versus *later updates*, and per-product/per-store target controls (plus store groups) let you exclude specific products from specific stores — exclusions are respected by both automatic reconciliation and Bulk Operations, so an excluded product is never repaired back onto a store it was deliberately kept off.
+Products and variations can be created/updated on target stores according to the configured policies. The product payload layer handles core product information and has specific code paths for attributes, taxonomy terms, images, downloadable files, linked products, variations and whitelisted/custom metadata.
 
-= Sync Scheduling & Conflict Handling =
+Per-store policies allow the fields synchronized on the first publish to differ from the fields synchronized on later updates. That makes it possible, for example, to centralize product creation while allowing a connected store to retain selected local merchandising fields after the initial copy.
 
-Product, stock, order, coupon, customer and review changes are captured immediately from the relevant WordPress/WooCommerce hooks (product save, stock change, order status change, coupon save, and so on) and queued as sync events. Delivery to each connected store then runs asynchronously through Action Scheduler (or WP-Cron if Action Scheduler isn't available), so an admin save never waits on a remote HTTP request. Changes typically reach connected stores within seconds under normal conditions, but delivery is asynchronous rather than a live, synchronous webhook.
+Products can be excluded entirely or limited to selected stores/store groups. Both normal delivery and reconciliation respect targeting so an intentionally excluded product is not repeatedly recreated as "drift."
 
-A failed delivery is retried automatically with exponential backoff (default: up to 8 attempts) before it's logged as an open conflict for review on the Conflicts screen. An hourly background reconciliation job independently compares the Control Store's authoritative stock ledger against every connected store and repairs any drift it finds. A five-minute health check polls every connected store and classifies it as Connected, Warning, Offline, Authentication Failed or Version Incompatible.
+= Authoritative Inventory Synchronization =
 
-= Security & Authentication =
+Inventory changes are captured from WooCommerce stock hooks and represented as network events. The inventory layer is designed around an authoritative value so stores converge on one stock state rather than continually overwriting each other with unrelated local counters.
 
-There is no third-party or Kitgenix-hosted sync service involved. The only outbound connections this plugin makes for synchronisation are directly between the WooCommerce stores *you* pair together, over their own REST APIs. Every request between paired stores is:
+The plugin watches stock quantity/status changes, order-driven stock changes and restoration flows. Periodic reconciliation runs in the background to identify/correct drift that may have resulted from a missed event, temporary outage or other operational interruption.
 
-* Authenticated with an HMAC-SHA256 signature covering the HTTP method, route, a timestamp, a single-use nonce, and the request body.
-* Time-limited (a 5-minute signed window) and checked against nonce replay before it's accepted.
-* Sent over HTTPS in production; the shared connection secret is stored encrypted at rest (AES-256-GCM, derived from your site's own WordPress security keys) rather than in plaintext.
+Cart/checkout validation logic can also compare requested quantities with the authoritative inventory reference where enabled, reducing the chance of a connected storefront accepting stock that the network no longer has available.
 
-Nothing is sent until you pair at least one store. See "External Services" below for full details of what is sent, to where, and when.
+= Orders Across Stores =
 
-= Developer Features =
+Orders from connected stores can be indexed centrally on the Control Store. The remote-order repository stores network order snapshots so administrators can search and report across the network without pretending that every remote order was originally created in the Control Store database.
 
-* **REST API** — routes registered under `/wp-json/kitgenix-multistore-sync-for-woocommerce/v1/`: `/pair`, `/health`, `/events`, `/inventory/snapshot`, `/inventory/availability`, `/orders/status`, `/orders/note`, `/orders/refund`, `/orders/next-number`, `/orders/customer-history` and `/diagnostics` — all authenticated with the signed-request scheme described above (only `/pair` uses its own one-time-code check instead).
-* **Filters** — `kitgenix_multistore/product/payload`, `kitgenix_multistore/product/meta_keys`, `kitgenix_multistore/order/payload`, `kitgenix_multistore/coupon/payload` and `kitgenix_multistore/customer/payload` for shaping what gets synced.
-* **Actions** — `kitgenix_multistore/event_created`, `kitgenix_multistore/inventory_authoritative_changed`, `kitgenix_multistore/external_inventory_captured`, `kitgenix_multistore/order_received`, `kitgenix_multistore/product_applied` and `kitgenix_multistore_loaded` for reacting to sync activity.
-* **WP-CLI commands** — `wp kitgenix-multistore-sync-for-woocommerce status`, `reconcile`, `sync-product <id>`, `doctor`, `index-orders`, `bulk-sync` (with `--dry-run` and `--products=<ids>`), and `bulk-reconcile` (with `--dry-run` and a live progress bar).
-* **Custom capability** — `kitgenix_multistore_sync_for_woocommerce_manage_multistore`, granted to Administrators by default and to any additional role you select under Settings → Permissions.
-* A WooCommerce Privacy exporter/eraser for network order and customer data, so personal-data requests are covered.
+The code also includes optional order import and authenticated actions for remote status changes, order notes and refunds. Network order numbers can be coordinated where that feature is enabled.
 
-= Compatibility =
+Central order views support export workflows, including CSV and XLSX generation implemented by the plugin.
 
-Built-in adapters detect and integrate with WooCommerce Square (reads the stock quantity Square has already written, never calls Square's API directly), Rank Math, Yoast SEO, WPML, Polylang, ATUM Multi-Inventory, WooCommerce Cost of Goods, PDF Invoices & Packing Slips, Price by User Role, Per Product Shipping, Custom Product Tabs/WP All Import, Elementor Pro, and Divi Shop Builder.
+= Coupons, Customers and Reviews =
 
-The plugin declares HPOS (High-Performance Order Storage) compatibility and includes dedicated handling for WooCommerce 11.0's order-driven stock restoration behaviour.
+Coupon synchronization is available for distributing coupon definitions according to the configured direction/policy.
 
-Riskier features — remote gateway refunds, customer sync, review synchronisation, shared network media, imported duplicate orders, and network-wide order numbering — are disabled by default and must be turned on deliberately.
+Customer synchronization and product-review synchronization are separate features and are not forced on every installation. They can be enabled deliberately when a merchant wants those data sets shared between connected stores.
+
+Because customer/order records can contain personal information, sites should review the plugin's sync choices as part of their own privacy/data-governance process rather than enabling every data type automatically.
+
+= Per-Store Pricing =
+
+Each connected store can have a pricing rule that adjusts source prices using a percentage, fixed amount or exchange-rate style multiplier. Optional rounding/charm-pricing behaviour and sale-price handling can be configured.
+
+The adjustment is calculated from the source value for each sync rather than continually stacking a new adjustment on top of the previously adjusted remote price.
+
+Manual per-product/per-store behaviour and field policies allow a network to keep central catalogue ownership while still supporting regional or channel-specific prices.
+
+= Bulk Operations =
+
+Large full-catalogue work is handled as persisted bulk jobs rather than a single long browser request. Product sync and inventory reconciliation jobs can be started in batches, monitored and, where supported by the operation, paused, resumed or stopped.
+
+Dry-run mode lets an administrator inspect what a bulk process would do before applying the changes. Persisted progress makes the operation resilient to the administrator closing the browser tab.
+
+= Queueing, Retries and Conflict Handling =
+
+The dispatcher records delivery state and processes asynchronous work through Action Scheduler when it is available. WP-Cron fallbacks exist for key background operations.
+
+Failed deliveries can be retried with backoff. When an issue cannot be resolved automatically, the plugin can keep a conflict record/log entry that identifies the store, event and diagnostic category instead of silently discarding the failure.
+
+The admin log and Network Doctor provide visibility into connectivity, authentication and queue health.
+
+= Store Health and Network Doctor =
+
+Connected-store health checks run on a schedule. The Control Store can display whether a peer is connected, warning, offline, authentication-failed or incompatible according to the health data available.
+
+Network Doctor performs local and remote checks such as HTTPS/REST reachability, plugin versions, WooCommerce environment, queue/scheduler health and other prerequisites relevant to reliable synchronization.
+
+= Security Between Stores =
+
+Requests between paired stores are signed with an HMAC-SHA256 scheme covering request components such as method, route, timestamp, nonce and body hash. The receiving site rejects requests that fail authentication, fall outside the permitted time window or replay a nonce.
+
+Production pairings require HTTPS. The code only permits unencrypted HTTP for environments it recognizes as local/development, not for a live-to-live production connection.
+
+Shared secrets are encrypted at rest with AES-256-GCM using key material derived from the WordPress installation's security salts. Secrets are therefore not stored as ordinary plaintext options.
+
+= Native WordPress Multisite =
+
+On Multisite, the plugin can discover network sites and operate without treating every subsite as an unrelated remote SaaS tenant. Network initialization/removal hooks keep the local site registry aligned when sites are created or removed.
+
+This mode is useful where several WooCommerce stores share one WordPress network but still require separate products/orders/storefront behaviour.
+
+= WP-CLI =
+
+The command base is:
+
+`wp kitgenix-multistore-sync-for-woocommerce`
+
+Implemented commands include `status`, `reconcile`, `sync-product`, `doctor`, `index-orders`, `bulk-sync` and `bulk-reconcile`.
+
+These commands provide operational visibility and make catalogue/network maintenance scriptable in managed hosting and deployment workflows.
+
+= Direct Store-to-Store Data Flow =
+
+The sync feature does not use a Kitgenix cloud relay. Network data is exchanged only with stores the administrator explicitly pairs/connects (or sites discovered inside the same configured Multisite network). Media or selected synced document assets can be downloaded directly from the sending store when a target store needs a local copy.
+
+The separate shared Kitgenix Hub may request public plugin metadata from WordPress.org, and the admin UI imports Google Fonts as documented under **External Services**. Those requests are unrelated to commerce synchronization.
+
+= Common Multi-Store Scenarios =
+
+* UK/Ireland or other regional WooCommerce storefronts sharing one catalogue.
+* Retail and wholesale stores sharing inventory but using different prices.
+* Multiple brand/domain stores supplied from the same physical stock pool.
+* WordPress Multisite networks with several WooCommerce shops.
+* Central order visibility across separately hosted stores.
+* Central product creation with per-store update policies.
+* Store-specific pricing while preserving a common source product.
 
 == Installation ==
 
 1. Install and activate WooCommerce, then install and activate Kitgenix MultiStore Sync for WooCommerce on every store you want to connect.
 2. **Separate WordPress installations:** on the store that should hold the master catalogue, generate a one-time pairing code (MultiStore → Stores). On each other store, enter that store's URL and the pairing code to connect it as a Connected Store. HTTPS is required for production pairings.
 3. **WordPress Multisite:** enable Native WordPress Multisite mode under MultiStore → Settings and choose the Control Site; the other sites on the network are discovered and paired automatically.
-4. Review synchronisation settings under MultiStore → Settings — what syncs, in which direction, and any per-store price rules or field policies.
+4. Review synchronisation settings under MultiStore → Settings – what syncs, in which direction, and any per-store price rules or field policies.
 5. Run Network Doctor (MultiStore → Doctor) to confirm connectivity, HTTPS, Action Scheduler and HPOS status before relying on the connection in production.
 6. Use Bulk Operations (or the WP-CLI `bulk-sync`/`bulk-reconcile` commands) to run an initial full sync once your stores are paired.
 
 == External Services ==
 
-This plugin's core purpose is to keep two or more of **your own** WooCommerce stores in sync. To do that, once you deliberately pair or connect a store, it communicates directly — and only — with the WooCommerce store(s) you specify. There is no Kitgenix-hosted or other third-party sync service in between, and nothing is sent anywhere until at least one store is paired.
+This plugin's core purpose is to keep two or more of **your own** WooCommerce stores in sync. To do that, once you deliberately pair or connect a store, it communicates directly – and only – with the WooCommerce store(s) you specify. There is no Kitgenix-hosted or other third-party sync service in between, and nothing is sent anywhere until at least one store is paired.
 
 = Requests made between your paired stores =
 
 * **Pairing** (one-time, admin-initiated): when you enter a store's URL and pairing code, this site sends an HTTPS POST containing a randomly generated 32-byte shared secret and this site's identity (site UUID, name, URL) to `https://<other-store>/wp-json/kitgenix-multistore-sync-for-woocommerce/v1/pair`. The receiving store only accepts this if it currently has a matching, unexpired, one-time pairing code.
-* **Event delivery** (automatic, whenever synced data changes): a signed POST is sent to `https://<paired-store>/wp-json/kitgenix-multistore-sync-for-woocommerce/v1/events`, carrying the product, inventory, order, coupon, customer or review payload for that change — only for the data types you have enabled in Settings.
+* **Event delivery** (automatic, whenever synced data changes): a signed POST is sent to `https://<paired-store>/wp-json/kitgenix-multistore-sync-for-woocommerce/v1/events`, carrying the product, inventory, order, coupon, customer or review payload for that change – only for the data types you have enabled in Settings.
 * **Health checks** (automatic, every 5 minutes): a signed POST to `/v1/health` confirms a paired store is reachable and compares WordPress/WooCommerce/PHP versions and Action Scheduler availability.
 * **Inventory reconciliation** (automatic, hourly): a signed POST to `/v1/inventory/snapshot` retrieves a connected store's current stock so it can be compared against the authoritative ledger; any drift found is corrected with a further signed delivery.
 * **Checkout-time stock validation** (on a Connected Store, only if enabled): a signed POST to `/v1/inventory/availability` on the Control Store confirms live stock before checkout completes.
-* **Remote order actions** (admin-initiated, from wherever the order is being managed): signed POSTs to `/v1/orders/status`, `/v1/orders/note` and `/v1/orders/refund` update a remote order's status, add a note, or — only if "Allow remote gateway refunds" is explicitly enabled — issue a refund on the store where the order actually lives.
+* **Remote order actions** (admin-initiated, from wherever the order is being managed): signed POSTs to `/v1/orders/status`, `/v1/orders/note` and `/v1/orders/refund` update a remote order's status, add a note, or – only if "Allow remote gateway refunds" is explicitly enabled – issue a refund on the store where the order actually lives.
 * **Network order numbering / My Account history** (only if those optional features are enabled): signed POSTs to `/v1/orders/next-number` and `/v1/orders/customer-history`.
 * **Network Doctor** (admin-initiated, read-only): a signed POST to `/v1/diagnostics` reads the same local environment checks from each paired store, without changing any commerce data.
 * **Media and document files**: when image sync (or, if enabled, Kitgenix Custom Tabs/Document Manager sync) brings in a file, the receiving store downloads it directly from the sending store's own media/attachment URL.
@@ -123,7 +187,7 @@ Depending on which sync options you enable in Settings, the data exchanged betwe
 
 = Authentication and data protection =
 
-Every request between paired stores carries an HMAC-SHA256 signature (covering the HTTP method, route, a timestamp, a single-use nonce, and a hash of the request body); the receiving store rejects anything unsigned, expired (more than 5 minutes old), replayed, or signed with the wrong secret. HTTPS is required for any production-to-production pairing — unencrypted HTTP is only ever accepted between two sites this plugin recognises as local/development environments, never for a connection involving a live production site. The shared connection secret itself is never stored in plaintext: it is encrypted at rest with AES-256-GCM, keyed from your own WordPress installation's `AUTH_KEY`/`SECURE_AUTH_KEY` security salts.
+Every request between paired stores carries an HMAC-SHA256 signature (covering the HTTP method, route, a timestamp, a single-use nonce, and a hash of the request body); the receiving store rejects anything unsigned, expired (more than 5 minutes old), replayed, or signed with the wrong secret. HTTPS is required for any production-to-production pairing – unencrypted HTTP is only ever accepted between two sites this plugin recognises as local/development environments, never for a connection involving a live production site. The shared connection secret itself is never stored in plaintext: it is encrypted at rest with AES-256-GCM, keyed from your own WordPress installation's `AUTH_KEY`/`SECURE_AUTH_KEY` security salts.
 
 = WordPress.org plugin directory (unrelated to store sync) =
 
@@ -133,11 +197,11 @@ The "Kitgenix" hub screen bundled with this and other Kitgenix plugins calls the
 
 = Does this plugin connect to any external/third-party service? =
 
-No third-party or Kitgenix-operated sync service is ever contacted. The only outbound connections used for synchronisation are to the WooCommerce store(s) *you* explicitly pair or connect — sites you own or administer, identified by the URL you enter yourself. Nothing is sent anywhere until you pair at least one store, and HTTPS is required for any production (non-staging/local) connection. See "External Services" above for the full breakdown of every request the plugin makes.
+No third-party or Kitgenix-operated sync service is ever contacted. The only outbound connections used for synchronisation are to the WooCommerce store(s) *you* explicitly pair or connect – sites you own or administer, identified by the URL you enter yourself. Nothing is sent anywhere until you pair at least one store, and HTTPS is required for any production (non-staging/local) connection. See "External Services" above for the full breakdown of every request the plugin makes.
 
 = Can I sync stock between two WooCommerce stores? =
 
-Yes — that's the core feature. Once two stores are paired, stock is kept as a single authoritative quantity/status that every store converges on, captured immediately from WooCommerce's own stock-change hooks and reconciled automatically once an hour in the background to correct any drift.
+Yes – that's the core feature. Once two stores are paired, stock is kept as a single authoritative quantity/status that every store converges on, captured immediately from WooCommerce's own stock-change hooks and reconciled automatically once an hour in the background to correct any drift.
 
 = Is synchronisation one-way or two-way? =
 
@@ -149,11 +213,11 @@ Changes are captured immediately from the relevant WordPress/WooCommerce action 
 
 = How do I connect two WooCommerce sites? =
 
-Generate a one-time pairing code on the store that should be the Control Store (MultiStore → Stores), then enter that store's URL and the pairing code on the other store to connect it as a Connected Store. On a WordPress Multisite network, enable Native Multisite mode instead and every site is discovered and paired automatically — no manual pairing code needed.
+Generate a one-time pairing code on the store that should be the Control Store (MultiStore → Stores), then enter that store's URL and the pairing code on the other store to connect it as a Connected Store. On a WordPress Multisite network, enable Native Multisite mode instead and every site is discovered and paired automatically – no manual pairing code needed.
 
 = Is this secure? =
 
-Every request between paired stores is signed with an HMAC-SHA256 signature and a short-lived timestamp/nonce (replay protection), HTTPS is required in production, and the shared connection secret is stored encrypted at rest (AES-256-GCM) using your own WordPress site's security keys — never in plaintext.
+Every request between paired stores is signed with an HMAC-SHA256 signature and a short-lived timestamp/nonce (replay protection), HTTPS is required in production, and the shared connection secret is stored encrypted at rest (AES-256-GCM) using your own WordPress site's security keys – never in plaintext.
 
 = Can I exclude specific products from syncing to specific stores? =
 
@@ -169,7 +233,7 @@ Yes. Every sync event, delivery attempt, retry, and authentication rejection is 
 
 = How many stores can be connected? =
 
-There's no fixed limit in the plugin itself — one Control Store can have any number of Connected Stores, whether paired individually or discovered automatically across a WordPress Multisite network.
+There's no fixed limit in the plugin itself – one Control Store can have any number of Connected Stores, whether paired individually or discovered automatically across a WordPress Multisite network.
 
 = Is WooCommerce required on both stores? =
 
@@ -189,7 +253,7 @@ Yes. Native WordPress Multisite mode discovers network sites and their Control S
 
 = Can I set different prices for each connected store? =
 
-Yes. Each connected store can have its own price rule — a percentage adjustment, a fixed amount, or an exchange-rate multiplier — with optional rounding or charm pricing, and configurable sale-price handling. Prices are always recalculated fresh from the source product on every sync, so a rule is never applied on top of a previous adjustment.
+Yes. Each connected store can have its own price rule – a percentage adjustment, a fixed amount, or an exchange-rate multiplier – with optional rounding or charm pricing, and configurable sale-price handling. Prices are always recalculated fresh from the source product on every sync, so a rule is never applied on top of a previous adjustment.
 
 = What happens to my data when I uninstall or delete this plugin? =
 
@@ -197,14 +261,12 @@ By default, nothing is removed: the plugin's settings and roles are left in plac
 
 == Screenshots ==
 
-1. The Stores screen, showing each connected store's live status (Connected, Warning, Offline, Authentication Failed or Version Incompatible) alongside its Kitgenix MultiStore, WordPress and WooCommerce versions and last contact time.
+1. The Stores screen, showing each connected store's live status alongside its Kitgenix MultiStore, WordPress and WooCommerce versions and last contact time.
 2. Pairing a new store, generating a pairing code and encrypted shared secret to connect a Control Store to a Connected Store.
-3. The Sync Centre's Bulk Operations panel, running a resumable full product sync or inventory reconciliation with a live progress bar, dry-run option, and pause/resume/stop controls.
+3. The Sync Centre's Bulk Operations overview.
 4. Per-store pricing rules, configuring a percentage, fixed-amount or exchange-rate price adjustment with rounding and sale-price handling for a connected store.
 5. The Settings screen's synchronisation options, toggling which data types sync (products, stock, orders, coupons, customers, reviews) and in which direction.
-6. The Log screen, showing a searchable, paginated list of sync events and delivery attempts with colour-coded status badges and a plain-English diagnostic reference.
-7. Network Doctor, reporting local and remote environment checks such as HTTPS, REST availability, Action Scheduler, HPOS status and queue health.
-8. The network-wide Orders screen, listing orders indexed from every connected store with bulk status actions and CSV/XLSX export.
+6. Network Doctor, reporting local and remote environment checks such as HTTPS, REST availability, Action Scheduler, HPOS status and queue health.
 
 == Credits ==
 Built with ❤︎ by @kitgenix - https://kitgenix.com
@@ -216,7 +278,7 @@ Initial release: multi-store product, inventory, order, coupon, customer and rev
 
 == Changelog ==
 
-= 1.0.0 (22 August 2026) =
+= 1.0.0 (31 August 2026) =
 
 * New: Optional synchronisation of Kitgenix Custom Tabs product tabs, and of any Kitgenix Document Manager document referenced by a [kitgenix_document_manager_document] shortcode inside a synced tab's content. Off by default; enable "Custom tabs & document synchronisation" in Settings, then allow the "Custom tabs" and "Custom tab documents" fields per store under Store Policies.
 * Hardening: Product sync now compares incoming data against the live product before writing anything, so a delivery that matches the current state performs no WooCommerce writes at all - no save(), no attribute update, no post_modified change, and no WooCommerce attribute-lookup or variation-summary regeneration.
