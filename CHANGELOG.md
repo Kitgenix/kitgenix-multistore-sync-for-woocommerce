@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0 – 13 October 2026
+
+- **New:** Added a manual "Clear log" button to the Log page for immediately wiping technical logs.
+- **New:** Simplified log retention to a 7/14/30-day preset.
+- **New:** Added a "Request a Feature" button to the Need Help? sidebar, linking directly to this plugin's page on the Kitgenix roadmap (https://roadmap.kitgenix.com).
+- **New:** Added a "Request a Feature" banner below the plugin grid on the Kitgenix Hub page, linking to the shared Kitgenix roadmap.
+
 ## 1.0.0 – 22 August 2026
 
 - **New:** Optional synchronisation of Kitgenix Custom Tabs product tabs, and of any Kitgenix Document Manager document referenced by a `[kitgenix_document_manager_document]` shortcode inside a synced tab's content. Off by default; enable "Custom tabs & document synchronisation" in Settings, then allow the "Custom tabs" and "Custom tab documents" fields per store under Store Policies.

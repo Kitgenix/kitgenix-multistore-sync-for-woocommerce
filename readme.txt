@@ -5,9 +5,10 @@ Tags: woocommerce, multistore sync, inventory sync, product sync, order sync
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
+PluginScore Verification: 
 
 Synchronize WooCommerce products, inventory, orders, coupons and optional customer/review data across connected stores.
 
@@ -273,10 +274,17 @@ Built with ❤︎ by @kitgenix - https://kitgenix.com
 
 == Upgrade Notice ==
 
-= 1.0.0 =
-Initial release: multi-store product, inventory, order, coupon, customer and review sync for WooCommerce with signed REST connections, resumable Bulk Operations, WordPress Multisite discovery, per-store pricing rules, and WP-CLI tooling.
+= 2.1.0 =
+Version 2.1.0 is recommended for all sites.
 
 == Changelog ==
+
+= 2.1.0 (13 October 2026) =
+
+* New: Added a manual "Clear log" button to the Log page for immediately wiping technical logs.
+* New: Simplified log retention to a 7/14/30-day preset.
+* New: Added a "Request a Feature" button to the Need Help? sidebar, linking directly to this plugin's page on the Kitgenix roadmap (https://roadmap.kitgenix.com).
+* New: Added a "Request a Feature" banner below the plugin grid on the Kitgenix Hub page, linking to the shared Kitgenix roadmap.
 
 = 1.0.0 (31 August 2026) =
 

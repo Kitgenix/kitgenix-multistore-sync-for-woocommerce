@@ -51,6 +51,17 @@ final class ProductApplier {
                 // the single save() below never fires. This is what makes synchronising
                 // an already-identical product a true no-op.
                 $changed = $is_new; // A brand-new product has no post ID yet; WooCommerce requires one save() to create it before terms/attributes/meta can be attached.
+                // When the dedicated inventory ledger (InventorySync) is active, it is the
+                // sole authority for stock on existing products - it applies deltas/sets
+                // under its own revision, atomically, against the network-wide authoritative
+                // quantity. A general product_upsert's 'stock_quantity' is only a snapshot of
+                // this store's product at build time, carries the shared cross-event-type
+                // revision counter (not the ledger's), and can arrive after an in-flight order
+                // elsewhere has already moved the authoritative count - applying it here would
+                // silently revert that correct, more current stock back to a stale value. Still
+                // apply it once, unconditionally, to bootstrap a brand-new product's initial
+                // stock before InventorySync has any record of it.
+                $dedicated_inventory_sync = 'yes' === $this->settings->get( 'sync_inventory', 'yes' );
 
                 if ( $allowed( 'name' ) ) { $v = wp_strip_all_tags( (string) ( $p['name'] ?? '' ) ); if ( $is_new || ! $this->eq( $product->get_name(), $v ) ) { $product->set_name( $v ); $changed = true; } }
                 if ( $allowed( 'slug' ) ) { $v = sanitize_title( (string) ( $p['slug'] ?? '' ) ); if ( $is_new || ! $this->eq( $product->get_slug(), $v ) ) { $product->set_slug( $v ); $changed = true; } }
@@ -77,7 +88,7 @@ final class ProductApplier {
                 if ( $allowed( 'tax', 'tax' ) && ( $is_new || ! $this->eq( $product->get_tax_status(), (string) ( $p['tax_status'] ?? 'taxable' ) ) || ! $this->eq( $product->get_tax_class(), (string) ( $p['tax_class'] ?? '' ) ) ) ) {
                     $product->set_tax_status( (string) ( $p['tax_status'] ?? 'taxable' ) ); $product->set_tax_class( (string) ( $p['tax_class'] ?? '' ) ); $changed = true;
                 }
-                if ( $allowed( 'inventory', 'inventory' ) && ( $is_new || $this->inventory_group_differs( $product, $p ) ) ) {
+                if ( $allowed( 'inventory', 'inventory' ) && ( $is_new || ( ! $dedicated_inventory_sync && $this->inventory_group_differs( $product, $p ) ) ) ) {
                     $product->set_manage_stock( ! empty( $p['manage_stock'] ) );
                     if ( ! empty( $p['manage_stock'] ) ) $product->set_stock_quantity( null === ( $p['stock_quantity'] ?? null ) ? null : wc_stock_amount( $p['stock_quantity'] ) );
                     $product->set_stock_status( (string) ( $p['stock_status'] ?? 'instock' ) ); $changed = true;
@@ -124,7 +135,7 @@ final class ProductApplier {
                     }
                 }
                 $this->apply_meta( $product->get_id(), $p, $allowed );
-                if ( $product instanceof \WC_Product_Variable && $allowed( 'variations', 'variations' ) ) $this->apply_variations( $product, (array) ( $p['variations'] ?? array() ), $revision, $p, $local_overrides, $is_new );
+                if ( $product instanceof \WC_Product_Variable && $allowed( 'variations', 'variations' ) ) $this->apply_variations( $product, (array) ( $p['variations'] ?? array() ), $revision, $p, $local_overrides, $is_new, $dedicated_inventory_sync );
                 if ( 'yes' === $this->settings->get( 'sync_reviews', 'no' ) && $allowed( 'reviews', 'reviews' ) ) $this->apply_reviews( $product->get_id(), (array) ( $p['reviews'] ?? array() ) );
                 if ( $changed ) wc_delete_product_transients( $product->get_id() );
                 do_action( 'kitgenix_multistore/product_applied', $product, $p, $revision, $changed );
@@ -428,7 +439,7 @@ final class ProductApplier {
         return false;
     }
 
-    private function apply_variations( \WC_Product_Variable $parent, array $items, int $revision, array $parent_payload, array $local_overrides, bool $parent_is_new ): void {
+    private function apply_variations( \WC_Product_Variable $parent, array $items, int $revision, array $parent_payload, array $local_overrides, bool $parent_is_new, bool $dedicated_inventory_sync = false ): void {
         $incoming = array(); $structure_changed = $parent_is_new;
         foreach ( $items as $v ) {
             if ( ! is_array( $v ) ) continue; $network = sanitize_text_field( (string) ( $v['network_id'] ?? '' ) ); if ( ! $network ) continue; $incoming[] = $network;
@@ -453,7 +464,7 @@ final class ProductApplier {
                 $changed = true;
             }
             if ( StorePolicy::allows( $parent_payload, 'tax' ) ) { $tax_class = (string) ( $v['tax_class'] ?? '' ); if ( $is_new_variation || ! $this->eq( $variation->get_tax_class(), $tax_class ) ) { $variation->set_tax_class( $tax_class ); $changed = true; } }
-            if ( StorePolicy::allows( $parent_payload, 'inventory' ) && ! in_array( 'inventory', $local_overrides, true ) && ( $is_new_variation || $this->inventory_group_differs( $variation, $v ) ) ) {
+            if ( StorePolicy::allows( $parent_payload, 'inventory' ) && ! in_array( 'inventory', $local_overrides, true ) && ( $is_new_variation || ( ! $dedicated_inventory_sync && $this->inventory_group_differs( $variation, $v ) ) ) ) {
                 $variation->set_manage_stock( ! empty( $v['manage_stock'] ) );
                 if ( ! empty( $v['manage_stock'] ) ) $variation->set_stock_quantity( null === ( $v['stock_quantity'] ?? null ) ? null : wc_stock_amount( $v['stock_quantity'] ) );
                 $variation->set_stock_status( (string) ( $v['stock_status'] ?? 'instock' ) ); $changed = true;

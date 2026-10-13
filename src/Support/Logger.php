@@ -27,6 +27,8 @@ final class Logger {
 
     public function cleanup( int $days = 30 ): void { global $wpdb; $days = max( 1, $days ); $cutoff = gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS * $days ); $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}kitgenix_multistore_sync_for_woocommerce_logs WHERE created_at < %s", $cutoff ) ); }
 
+    public function clear(): void { global $wpdb; $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}kitgenix_multistore_sync_for_woocommerce_logs" ); }
+
     public function info( string $message, array $context = array() ): void { $this->log( 'info', $message, $context ); }
     public function warning( string $message, array $context = array() ): void { $this->log( 'warning', $message, $context ); }
     public function error( string $message, array $context = array() ): void { $this->log( 'error', $message, $context ); }

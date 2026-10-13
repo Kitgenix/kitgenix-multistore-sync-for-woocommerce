@@ -3,7 +3,7 @@
  * Plugin Name: Kitgenix MultiStore Sync for WooCommerce
  * Plugin URI: https://kitgenix.com/
  * Description: Secure, queue-backed multi-store product, inventory, order, customer and coupon synchronisation for WooCommerce.
- * Version: 1.0.0
+ * Version: 2.1.0
  * Author: Kitgenix
  * Author URI: https://kitgenix.com/
  * Text Domain: kitgenix-multistore-sync-for-woocommerce
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION', '1.0.0' );
+define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION', '2.1.0' );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_DB_VERSION', '1.0.0' );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_FILE', __FILE__ );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_DIR', plugin_dir_path( __FILE__ ) );
@@ -429,6 +429,14 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
                 'page'     => 'kitgenix-affiliate-link-manager',
                 'requires' => __( 'Manage affiliate short links, branded redirects, and click tracking from one WordPress dashboard.', 'kitgenix-multistore-sync-for-woocommerce' ),
             ],
+            [
+                'id'       => 'database_cleaner',
+                'name'     => __( 'Database Cleaner', 'kitgenix-multistore-sync-for-woocommerce' ),
+                'slug'     => 'kitgenix-database-cleaner',
+                'file'     => 'kitgenix-database-cleaner/kitgenix-database-cleaner.php',
+                'page'     => 'kitgenix-database-cleaner',
+                'requires' => __( 'Scan and clean your WordPress database safely, with plugin/theme attribution for every item found and a built-in recycle bin so nothing is ever deleted without a way back.', 'kitgenix-multistore-sync-for-woocommerce' ),
+            ],
         ];
 
         $slugs = [];
@@ -583,7 +591,17 @@ if ( ! function_exists( 'kitgenix_render_admin_page' ) ) {
                 . '</div>';
         }
 
-        echo '</div></div></div></div>';
+        echo '</div>'; // .kitgenix-hub-grid
+
+        echo '<div class="kitgenix-hub-feature-banner">'
+            . '<div class="kitgenix-hub-feature-banner-copy">'
+            . '<h2>' . esc_html__( 'Have an idea for a new feature?', 'kitgenix-multistore-sync-for-woocommerce' ) . '</h2>'
+            . '<p>' . esc_html__( 'Browse the roadmap, vote on ideas, and submit feature requests for any Kitgenix plugin.', 'kitgenix-multistore-sync-for-woocommerce' ) . '</p>'
+            . '</div>'
+            . '<a class="button button-primary" href="' . esc_url( 'https://roadmap.kitgenix.com' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Request a Feature', 'kitgenix-multistore-sync-for-woocommerce' ) . '</a>'
+            . '</div>';
+
+        echo '</div></div></div>'; // .kitgenix-hub, .kitgenix-hub-wrap, .wrap
     }
 }
 
