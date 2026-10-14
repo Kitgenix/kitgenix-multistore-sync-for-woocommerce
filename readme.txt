@@ -5,7 +5,7 @@ Tags: woocommerce, multistore sync, inventory sync, product sync, order sync
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.1.0
+Stable tag: 2.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 PluginScore Verification: 
@@ -274,10 +274,18 @@ Built with ❤︎ by @kitgenix - https://kitgenix.com
 
 == Upgrade Notice ==
 
-= 2.1.0 =
-Version 2.1.0 is recommended for all sites.
+= 2.1.2 =
+Version 2.1.2 is recommended for all sites.
 
 == Changelog ==
+
+= 2.1.2 (13 October 2026) =
+
+* Fix: Bump version to 2.1.2 across the plugin.
+
+= 2.1.1 (13 October 2026) =
+
+* Fix: Updated PluginScore Verification code.
 
 = 2.1.0 (13 October 2026) =
 

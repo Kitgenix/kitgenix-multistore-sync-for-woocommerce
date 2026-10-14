@@ -3,7 +3,7 @@
  * Plugin Name: Kitgenix MultiStore Sync for WooCommerce
  * Plugin URI: https://kitgenix.com/
  * Description: Secure, queue-backed multi-store product, inventory, order, customer and coupon synchronisation for WooCommerce.
- * Version: 2.1.0
+ * Version: 2.1.2
  * Author: Kitgenix
  * Author URI: https://kitgenix.com/
  * Text Domain: kitgenix-multistore-sync-for-woocommerce
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION', '2.1.0' );
+define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_VERSION', '2.1.2' );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_DB_VERSION', '1.0.0' );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_FILE', __FILE__ );
 define( 'KITGENIX_MULTISTORE_SYNC_FOR_WOOCOMMERCE_DIR', plugin_dir_path( __FILE__ ) );
